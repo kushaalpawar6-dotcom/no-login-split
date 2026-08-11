@@ -13,13 +13,12 @@ const tripId =
 let trip = null;
 let people = [];
 let expenses = [];
+let expenseParticipants = {};
 
 
-/*
-=====================================================
-CURRENT USER / MEMBER
-=====================================================
-*/
+/* =====================================================
+   CURRENT USER
+===================================================== */
 
 let participantToken =
   tripId
@@ -27,7 +26,6 @@ let participantToken =
         `nls_participant_${tripId}`
       )
     : null;
-
 
 let participantId =
   tripId
@@ -37,12 +35,9 @@ let participantId =
     : null;
 
 
-
-/*
-=====================================================
-HELPERS
-=====================================================
-*/
+/* =====================================================
+   HELPERS
+===================================================== */
 
 function $(id) {
   return document.getElementById(id);
@@ -51,28 +46,19 @@ function $(id) {
 
 function toast(message) {
 
-  const box =
-    $("toast");
+  const box = $("toast");
 
   if (!box) {
     alert(message);
     return;
   }
 
-  box.textContent =
-    message;
-
-  box.style.display =
-    "block";
-
+  box.textContent = message;
+  box.style.display = "block";
 
   setTimeout(() => {
-
-    box.style.display =
-      "none";
-
+    box.style.display = "none";
   }, 3000);
-
 }
 
 
@@ -84,21 +70,14 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-
 }
 
 
+/* =====================================================
+   SUPABASE API
+===================================================== */
 
-/*
-=====================================================
-SUPABASE API
-=====================================================
-*/
-
-async function api(
-  path,
-  options = {}
-) {
+async function api(path, options = {}) {
 
   const response =
     await fetch(
@@ -107,9 +86,7 @@ async function api(
         ...options,
 
         headers: {
-
-          apikey:
-            SUPABASE_KEY,
+          apikey: SUPABASE_KEY,
 
           Authorization:
             `Bearer ${SUPABASE_KEY}`,
@@ -118,7 +95,6 @@ async function api(
             "application/json",
 
           ...(options.headers || {})
-
         }
       }
     );
@@ -130,19 +106,14 @@ async function api(
 
   let data = null;
 
-
   try {
+    data = text
+      ? JSON.parse(text)
+      : null;
+  }
 
-    data =
-      text
-        ? JSON.parse(text)
-        : null;
-
-  } catch {
-
-    data =
-      text;
-
+  catch {
+    data = text;
   }
 
 
@@ -154,21 +125,16 @@ async function api(
       data?.error_description ||
       "Something went wrong"
     );
-
   }
 
 
   return data;
-
 }
 
 
-
-/*
-=====================================================
-PEOPLE INPUTS
-=====================================================
-*/
+/* =====================================================
+   PEOPLE INPUTS
+===================================================== */
 
 let personCounter = 0;
 
@@ -177,37 +143,26 @@ function createPersonField() {
 
   personCounter++;
 
-
   const container =
     $("peopleInputs");
 
-
   const row =
-    document.createElement(
-      "div"
-    );
-
+    document.createElement("div");
 
   row.className =
     "person-row";
 
 
   const input =
-    document.createElement(
-      "input"
-    );
+    document.createElement("input");
 
-
-  input.type =
-    "text";
+  input.type = "text";
 
   input.className =
     "person-input";
 
-
   input.placeholder =
     `Person ${personCounter}`;
-
 
   input.autocomplete =
     "new-password";
@@ -221,62 +176,40 @@ function createPersonField() {
   input.spellcheck =
     false;
 
-
   input.name =
     `person_${Date.now()}_${personCounter}`;
 
-
-  input.value =
-    "";
+  input.value = "";
 
 
   const remove =
-    document.createElement(
-      "button"
-    );
+    document.createElement("button");
 
-
-  remove.type =
-    "button";
+  remove.type = "button";
 
   remove.className =
     "remove-person";
 
-  remove.textContent =
-    "×";
+  remove.textContent = "×";
 
 
-  remove.onclick =
-    function () {
+  remove.onclick = () => {
 
-      row.remove();
+    row.remove();
 
-      renumberPeople();
+    renumberPeople();
 
-    };
-
-
-  row.appendChild(
-    input
-  );
-
-  row.appendChild(
-    remove
-  );
+  };
 
 
-  container.appendChild(
-    row
-  );
+  row.appendChild(input);
+  row.appendChild(remove);
 
+  container.appendChild(row);
 
   setTimeout(() => {
-
-    input.value =
-      "";
-
+    input.value = "";
   }, 0);
-
 }
 
 
@@ -287,7 +220,6 @@ function renumberPeople() {
       "#peopleInputs .person-input"
     );
 
-
   inputs.forEach(
     (input, index) => {
 
@@ -297,26 +229,19 @@ function renumberPeople() {
     }
   );
 
-
   personCounter =
     inputs.length;
-
 }
 
 
 function addPerson() {
-
   createPersonField();
-
 }
 
 
-
-/*
-=====================================================
-CREATE TRIP
-=====================================================
-*/
+/* =====================================================
+   CREATE TRIP
+===================================================== */
 
 async function createTrip() {
 
@@ -347,24 +272,14 @@ async function createTrip() {
 
 
   if (!tripName) {
-
-    toast(
-      "Enter a trip name."
-    );
-
+    toast("Enter a trip name.");
     return;
-
   }
 
 
   if (names.length < 2) {
-
-    toast(
-      "Add at least 2 people."
-    );
-
+    toast("Add at least 2 people.");
     return;
-
   }
 
 
@@ -385,46 +300,28 @@ async function createTrip() {
     );
 
     return;
-
   }
 
 
   const button =
     $("createTripBtn");
 
-
-  button.disabled =
-    true;
-
-  button.textContent =
-    "Creating...";
+  button.disabled = true;
+  button.textContent = "Creating...";
 
 
   try {
-
-    /*
-    Create trip + members.
-    */
 
     const result =
       await api(
         "/rest/v1/rpc/create_trip",
         {
+          method: "POST",
 
-          method:
-            "POST",
-
-          body:
-            JSON.stringify({
-
-              p_name:
-                tripName,
-
-              p_people:
-                names
-
-            })
-
+          body: JSON.stringify({
+            p_name: tripName,
+            p_people: names
+          })
         }
       );
 
@@ -436,11 +333,9 @@ async function createTrip() {
 
 
     if (!data?.trip_id) {
-
       throw new Error(
         "Trip creation failed."
       );
-
     }
 
 
@@ -448,32 +343,18 @@ async function createTrip() {
       data.trip_id;
 
 
-    /*
-    The creator automatically becomes
-    the first member.
-    */
-
     const joined =
       await api(
         "/rest/v1/rpc/join_trip",
         {
+          method: "POST",
 
-          method:
-            "POST",
-
-          body:
-            JSON.stringify({
-
-              p_trip_id:
-                newTripId,
-
-              p_name:
-                names[0]
-
-            })
-
-          }
-        );
+          body: JSON.stringify({
+            p_trip_id: newTripId,
+            p_name: names[0]
+          })
+        }
+      );
 
 
     const participant =
@@ -489,7 +370,6 @@ async function createTrip() {
       throw new Error(
         "Could not create your permission."
       );
-
     }
 
 
@@ -505,10 +385,6 @@ async function createTrip() {
     );
 
 
-    /*
-    ONE MASTER LINK.
-    */
-
     window.location.href =
       `${window.location.pathname}?trip=${newTripId}`;
 
@@ -519,35 +395,23 @@ async function createTrip() {
 
     console.error(error);
 
-    toast(
-      error.message
-    );
+    toast(error.message);
 
-    button.disabled =
-      false;
+    button.disabled = false;
 
     button.textContent =
       "Create Trip";
-
   }
-
 }
 
 
-
-/*
-=====================================================
-LOAD TRIP
-=====================================================
-*/
+/* =====================================================
+   LOAD TRIP
+===================================================== */
 
 async function loadTrip() {
 
   try {
-
-    /*
-    Load trip.
-    */
 
     const trips =
       await api(
@@ -560,24 +424,16 @@ async function loadTrip() {
       trips.length === 0
     ) {
 
-      toast(
-        "Trip not found."
-      );
+      toast("Trip not found.");
 
       showHome();
 
       return;
-
     }
 
 
-    trip =
-      trips[0];
+    trip = trips[0];
 
-
-    /*
-    Load ALL members.
-    */
 
     people =
       await api(
@@ -585,40 +441,114 @@ async function loadTrip() {
       );
 
 
-    /*
-    Load expenses.
-    */
-
     expenses =
       await api(
         `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,paid_by,created_by_participant_id,created_at&order=created_at.desc`
       );
 
 
+    await loadExpenseParticipants();
+
+
     renderTrip();
 
-
   }
+
 
   catch (error) {
 
     console.error(error);
 
-    toast(
-      error.message
-    );
+    toast(error.message);
 
   }
+}
+
+
+/* =====================================================
+   LOAD EXPENSE PARTICIPANTS
+===================================================== */
+
+async function loadExpenseParticipants() {
+
+  expenseParticipants = {};
+
+
+  if (!expenses.length) {
+    return;
+  }
+
+
+  const ids =
+    expenses
+      .map(e => e.id)
+      .join(",");
+
+
+  const rows =
+    await api(
+      `/rest/v1/expense_participants?expense_id=in.(${ids})&select=expense_id,person_id`
+    );
+
+
+  rows.forEach(row => {
+
+    if (
+      !expenseParticipants[
+        row.expense_id
+      ]
+    ) {
+
+      expenseParticipants[
+        row.expense_id
+      ] = [];
+
+    }
+
+
+    expenseParticipants[
+      row.expense_id
+    ].push(
+      row.person_id
+    );
+
+  });
+
+
+  /*
+    OLD EXPENSES:
+    If an old expense has no participant rows,
+    everyone participates.
+  */
+
+  expenses.forEach(expense => {
+
+    if (
+      !expenseParticipants[
+        expense.id
+      ] ||
+      !expenseParticipants[
+        expense.id
+      ].length
+    ) {
+
+      expenseParticipants[
+        expense.id
+      ] =
+        people.map(
+          person => person.id
+        );
+
+    }
+
+  });
 
 }
 
 
-
-/*
-=====================================================
-SCREENS
-=====================================================
-*/
+/* =====================================================
+   SCREENS
+===================================================== */
 
 function showHome() {
 
@@ -648,12 +578,9 @@ function showTrip() {
 }
 
 
-
-/*
-=====================================================
-RENDER TRIP
-=====================================================
-*/
+/* =====================================================
+   RENDER TRIP
+===================================================== */
 
 function renderTrip() {
 
@@ -670,49 +597,28 @@ function renderTrip() {
     window.location.href;
 
 
-  /*
-  Fill payer dropdown.
-  */
-
   populatePayers();
 
 
-  /*
-  Show members / select current member.
-  */
+  renderExpenseParticipantSelector();
+
 
   renderMemberSelector();
 
 
-  /*
-  Show expenses.
-  */
-
   renderExpenses();
 
-
-  /*
-  Show balances.
-  */
 
   renderBalances();
 
 }
 
 
-
-/*
-=====================================================
-MEMBER SELECTOR
-=====================================================
-*/
+/* =====================================================
+   MEMBER SELECTOR
+===================================================== */
 
 function renderMemberSelector() {
-
-  /*
-  If the user has already selected a member
-  on this device, don't show the selector.
-  */
 
   if (participantId) {
 
@@ -729,22 +635,17 @@ function renderMemberSelector() {
       hideMemberSelector();
 
       return;
-
     }
 
-    /*
-    Stored ID is no longer valid.
-    */
 
-    participantId =
-      null;
+    participantId = null;
+    participantToken = null;
 
-    participantToken =
-      null;
 
     localStorage.removeItem(
       `nls_participant_${tripId}`
     );
+
 
     localStorage.removeItem(
       `nls_participant_id_${tripId}`
@@ -752,14 +653,6 @@ function renderMemberSelector() {
 
   }
 
-
-  /*
-  No member selected yet.
-
-  Show the EXISTING members.
-
-  No "Join Trip".
-  */
 
   showMemberSelector();
 
@@ -775,18 +668,13 @@ function showMemberSelector() {
   if (!box) {
 
     box =
-      document.createElement(
-        "div"
-      );
-
+      document.createElement("div");
 
     box.id =
       "memberSelector";
 
-
     box.className =
       "card";
-
 
     box.style.marginBottom =
       "16px";
@@ -825,7 +713,6 @@ function showMemberSelector() {
 
 
     <div
-      id="memberButtons"
       style="
         display:flex;
         flex-direction:column;
@@ -882,20 +769,15 @@ function hideMemberSelector() {
 
 
   if (box) {
-
     box.remove();
-
   }
 
 }
 
 
-
-/*
-=====================================================
-SELECT MEMBER
-=====================================================
-*/
+/* =====================================================
+   SELECT MEMBER
+===================================================== */
 
 async function selectMember(
   personId
@@ -911,18 +793,11 @@ async function selectMember(
 
   if (!person) {
 
-    toast(
-      "Member not found."
-    );
+    toast("Member not found.");
 
     return;
-
   }
 
-
-  /*
-  Show a temporary state.
-  */
 
   const buttons =
     document.querySelectorAll(
@@ -932,45 +807,25 @@ async function selectMember(
 
   buttons.forEach(
     button => {
-
-      button.disabled =
-        true;
-
+      button.disabled = true;
     }
   );
 
 
   try {
 
-    /*
-    IMPORTANT:
-
-    We use the EXISTING member name.
-
-    No one types a new name.
-    */
-
     const result =
       await api(
         "/rest/v1/rpc/join_trip",
         {
+          method: "POST",
 
-          method:
-            "POST",
-
-          body:
-            JSON.stringify({
-
-              p_trip_id:
-                tripId,
-
-              p_name:
-                person.name
-
-            })
-
-          }
-        );
+          body: JSON.stringify({
+            p_trip_id: tripId,
+            p_name: person.name
+          })
+        }
+      );
 
 
     const participant =
@@ -986,13 +841,8 @@ async function selectMember(
       throw new Error(
         "Could not select this member."
       );
-
     }
 
-
-    /*
-    Save permission.
-    */
 
     participantToken =
       participant.participant_token;
@@ -1014,10 +864,6 @@ async function selectMember(
     );
 
 
-    /*
-    Immediately remove selector.
-    */
-
     hideMemberSelector();
 
 
@@ -1025,10 +871,6 @@ async function selectMember(
       `You're using ${person.name}'s profile.`
     );
 
-
-    /*
-    Reload everything.
-    */
 
     await loadTrip();
 
@@ -1039,17 +881,12 @@ async function selectMember(
 
     console.error(error);
 
-    toast(
-      error.message
-    );
+    toast(error.message);
 
 
     buttons.forEach(
       button => {
-
-        button.disabled =
-          false;
-
+        button.disabled = false;
       }
     );
 
@@ -1058,12 +895,9 @@ async function selectMember(
 }
 
 
-
-/*
-=====================================================
-PAYERS
-=====================================================
-*/
+/* =====================================================
+   PAYERS
+===================================================== */
 
 function populatePayers() {
 
@@ -1076,8 +910,7 @@ function populatePayers() {
   }
 
 
-  select.innerHTML =
-    "";
+  select.innerHTML = "";
 
 
   people.forEach(
@@ -1097,26 +930,20 @@ function populatePayers() {
         person.name;
 
 
-      /*
-      If current member is known,
-      automatically select them.
-      */
-
       if (
         participantId &&
-        String(person.participant_id) ===
+        String(
+          person.participant_id
+        ) ===
         String(participantId)
       ) {
 
-        option.selected =
-          true;
+        option.selected = true;
 
       }
 
 
-      select.appendChild(
-        option
-      );
+      select.appendChild(option);
 
     }
   );
@@ -1124,18 +951,334 @@ function populatePayers() {
 }
 
 
+/* =====================================================
+   EXPENSE PARTICIPANT UI
+===================================================== */
 
-/*
-=====================================================
-ADD EXPENSE
-=====================================================
-*/
+function renderExpenseParticipantSelector() {
+
+  let box =
+    $("expenseParticipantsBox");
+
+
+  if (!box) {
+
+    box =
+      document.createElement("div");
+
+    box.id =
+      "expenseParticipantsBox";
+
+
+    box.style.cssText = `
+      margin-top:16px;
+      padding:14px;
+      border:1px solid #e8eaf0;
+      border-radius:16px;
+      background:#fafbfe;
+    `;
+
+
+    const button =
+      $("addExpenseBtn");
+
+
+    button.parentNode
+      .insertBefore(
+        box,
+        button
+      );
+
+  }
+
+
+  box.innerHTML = `
+
+    <div
+      style="
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        margin-bottom:10px;
+      "
+    >
+
+      <div>
+
+        <div
+          style="
+            font-weight:800;
+            font-size:14px;
+          "
+        >
+          Split between
+        </div>
+
+        <div
+          id="selectedParticipantCount"
+          style="
+            font-size:12px;
+            color:#737887;
+            margin-top:3px;
+          "
+        >
+          ${people.length} of ${people.length} selected
+        </div>
+
+      </div>
+
+
+      <div
+        style="
+          display:flex;
+          gap:6px;
+        "
+      >
+
+        <button
+          type="button"
+          id="selectAllParticipants"
+          style="
+            border:0;
+            background:transparent;
+            font-size:12px;
+            font-weight:700;
+            padding:6px;
+          "
+        >
+          Select all
+        </button>
+
+
+        <button
+          type="button"
+          id="clearAllParticipants"
+          style="
+            border:0;
+            background:transparent;
+            font-size:12px;
+            font-weight:700;
+            padding:6px;
+          "
+        >
+          Clear
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div
+      id="expenseParticipantList"
+      style="
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+      "
+    >
+    </div>
+
+  `;
+
+
+  const list =
+    $("expenseParticipantList");
+
+
+  people.forEach(
+    person => {
+
+      const label =
+        document.createElement("label");
+
+
+      label.style.cssText = `
+        display:flex;
+        align-items:center;
+        gap:10px;
+        min-height:42px;
+        padding:0 10px;
+        border-radius:12px;
+        background:white;
+        border:1px solid #eef0f4;
+        font-weight:600;
+        cursor:pointer;
+      `;
+
+
+      label.innerHTML = `
+
+        <input
+          type="checkbox"
+          class="expense-participant"
+          value="${escapeHtml(person.id)}"
+          checked
+          style="
+            width:18px;
+            height:18px;
+          "
+        >
+
+        <span>
+          ${escapeHtml(person.name)}
+        </span>
+
+      `;
+
+
+      list.appendChild(label);
+
+    }
+  );
+
+
+  function updateCount() {
+
+    const checked =
+      document.querySelectorAll(
+        ".expense-participant:checked"
+      ).length;
+
+
+    const count =
+      $("selectedParticipantCount");
+
+
+    if (count) {
+
+      count.textContent =
+        `${checked} of ${people.length} selected`;
+
+    }
+
+  }
+
+
+  list
+    .querySelectorAll(
+      ".expense-participant"
+    )
+    .forEach(
+      input => {
+
+        input.addEventListener(
+          "change",
+          updateCount
+        );
+
+      }
+    );
+
+
+  $("selectAllParticipants")
+    .onclick = () => {
+
+      list
+        .querySelectorAll(
+          ".expense-participant"
+        )
+        .forEach(
+          input =>
+            input.checked = true
+        );
+
+
+      updateCount();
+
+    };
+
+
+  $("clearAllParticipants")
+    .onclick = () => {
+
+      list
+        .querySelectorAll(
+          ".expense-participant"
+        )
+        .forEach(
+          input =>
+            input.checked = false
+        );
+
+
+      updateCount();
+
+    };
+
+}
+
+
+function getSelectedExpenseParticipants() {
+
+  return Array.from(
+    document.querySelectorAll(
+      ".expense-participant:checked"
+    )
+  )
+  .map(
+    input =>
+      input.value
+  );
+
+}
+
+
+/* =====================================================
+   SAVE EXPENSE PARTICIPANTS
+===================================================== */
+
+async function saveExpenseParticipants(
+  expenseId,
+  personIds
+) {
+
+  if (
+    !expenseId ||
+    !personIds.length
+  ) {
+
+    throw new Error(
+      "Select at least one participant."
+    );
+
+  }
+
+
+  await api(
+    "/rest/v1/expense_participants",
+    {
+      method: "POST",
+
+      headers: {
+        Prefer:
+          "return=minimal"
+      },
+
+      body:
+        JSON.stringify(
+          personIds.map(
+            personId => ({
+              expense_id:
+                expenseId,
+
+              person_id:
+                personId
+            })
+          )
+        )
+    }
+  );
+
+}
+
+
+/* =====================================================
+   ADD EXPENSE
+===================================================== */
 
 async function addExpense() {
-
-  /*
-  A member must be selected first.
-  */
 
   if (!participantToken) {
 
@@ -1146,7 +1289,6 @@ async function addExpense() {
     showMemberSelector();
 
     return;
-
   }
 
 
@@ -1168,6 +1310,10 @@ async function addExpense() {
       .value;
 
 
+  const selectedParticipants =
+    getSelectedExpenseParticipants();
+
+
   if (!description) {
 
     toast(
@@ -1175,7 +1321,6 @@ async function addExpense() {
     );
 
     return;
-
   }
 
 
@@ -1189,7 +1334,6 @@ async function addExpense() {
     );
 
     return;
-
   }
 
 
@@ -1200,7 +1344,18 @@ async function addExpense() {
     );
 
     return;
+  }
 
+
+  if (
+    !selectedParticipants.length
+  ) {
+
+    toast(
+      "Select at least one participant."
+    );
+
+    return;
   }
 
 
@@ -1208,8 +1363,7 @@ async function addExpense() {
     $("addExpenseBtn");
 
 
-  button.disabled =
-    true;
+  button.disabled = true;
 
   button.textContent =
     "Adding...";
@@ -1217,15 +1371,13 @@ async function addExpense() {
 
   try {
 
-    await api(
-      "/rest/v1/rpc/add_expense_secure",
-      {
+    const result =
+      await api(
+        "/rest/v1/rpc/add_expense_secure",
+        {
+          method: "POST",
 
-        method:
-          "POST",
-
-        body:
-          JSON.stringify({
+          body: JSON.stringify({
 
             p_trip_id:
               tripId,
@@ -1243,19 +1395,68 @@ async function addExpense() {
               paidBy
 
           })
+        }
+      );
 
-      }
+
+    let expenseId =
+      Array.isArray(result)
+        ? result[0]?.id
+        : result?.id;
+
+
+    if (
+      !expenseId &&
+      Array.isArray(result)
+    ) {
+
+      expenseId =
+        result[0]?.expense_id;
+
+    }
+
+
+    /*
+      If the RPC doesn't return the
+      expense ID, find the newly-created
+      expense.
+    */
+
+    if (!expenseId) {
+
+      const latest =
+        await api(
+          `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&created_by_participant_id=eq.${encodeURIComponent(participantId)}&description=eq.${encodeURIComponent(description)}&amount=eq.${encodeURIComponent(amount)}&select=id,created_at&order=created_at.desc&limit=1`
+        );
+
+
+      expenseId =
+        latest?.[0]?.id;
+
+    }
+
+
+    if (!expenseId) {
+
+      throw new Error(
+        "Expense was added, but its participant list could not be saved."
+      );
+
+    }
+
+
+    await saveExpenseParticipants(
+      expenseId,
+      selectedParticipants
     );
 
 
     $("expenseDescription")
-      .value =
-      "";
+      .value = "";
 
 
     $("expenseAmount")
-      .value =
-      "";
+      .value = "";
 
 
     await loadTrip();
@@ -1272,15 +1473,12 @@ async function addExpense() {
 
     console.error(error);
 
-    toast(
-      error.message
-    );
+    toast(error.message);
 
   }
 
 
-  button.disabled =
-    false;
+  button.disabled = false;
 
   button.textContent =
     "Add Expense";
@@ -1288,12 +1486,9 @@ async function addExpense() {
 }
 
 
-
-/*
-=====================================================
-EXPENSES
-=====================================================
-*/
+/* =====================================================
+   EXPENSES
+===================================================== */
 
 function renderExpenses() {
 
@@ -1301,8 +1496,7 @@ function renderExpenses() {
     $("expensesList");
 
 
-  container.innerHTML =
-    "";
+  container.innerHTML = "";
 
 
   if (!expenses.length) {
@@ -1311,7 +1505,10 @@ function renderExpenses() {
 
       <div
         class="expense"
-        style="text-align:center;padding:25px;"
+        style="
+          text-align:center;
+          padding:25px;
+        "
       >
 
         <div style="font-size:28px;">
@@ -1342,7 +1539,6 @@ function renderExpenses() {
     `;
 
     return;
-
   }
 
 
@@ -1369,6 +1565,32 @@ function renderExpenses() {
         );
 
 
+      const ids =
+        expenseParticipants[
+          expense.id
+        ] ||
+        people.map(
+          person =>
+            person.id
+        );
+
+
+      const names =
+        people
+          .filter(
+            person =>
+              ids.some(
+                id =>
+                  String(id) ===
+                  String(person.id)
+              )
+          )
+          .map(
+            person =>
+              person.name
+          );
+
+
       const item =
         document.createElement(
           "div"
@@ -1379,11 +1601,6 @@ function renderExpenses() {
         "expense";
 
 
-      /*
-      Only the person who added
-      the expense sees Delete.
-      */
-
       const isMine =
         participantId &&
         String(
@@ -1392,8 +1609,7 @@ function renderExpenses() {
         String(participantId);
 
 
-      let deleteButton =
-        "";
+      let deleteButton = "";
 
 
       if (isMine) {
@@ -1411,9 +1627,7 @@ function renderExpenses() {
               deleteOwnExpense('${expense.id}')
             "
           >
-
             Delete
-
           </button>
 
         `;
@@ -1468,14 +1682,32 @@ function renderExpenses() {
         </div>
 
 
+        <div
+          style="
+            margin-top:9px;
+            font-size:12px;
+            color:#737887;
+            line-height:1.45;
+          "
+        >
+
+          <strong>
+            Split between:
+          </strong>
+
+          ${escapeHtml(
+            names.join(", ")
+          )}
+
+        </div>
+
+
         ${deleteButton}
 
       `;
 
 
-      container.appendChild(
-        item
-      );
+      container.appendChild(item);
 
     }
   );
@@ -1483,12 +1715,9 @@ function renderExpenses() {
 }
 
 
-
-/*
-=====================================================
-DELETE MY EXPENSE
-=====================================================
-*/
+/* =====================================================
+   DELETE EXPENSE
+===================================================== */
 
 async function deleteOwnExpense(
   expenseId
@@ -1501,7 +1730,6 @@ async function deleteOwnExpense(
     );
 
     return;
-
   }
 
 
@@ -1512,7 +1740,6 @@ async function deleteOwnExpense(
   ) {
 
     return;
-
   }
 
 
@@ -1521,21 +1748,17 @@ async function deleteOwnExpense(
     await api(
       "/rest/v1/rpc/delete_my_expense",
       {
+        method: "POST",
 
-        method:
-          "POST",
+        body: JSON.stringify({
 
-        body:
-          JSON.stringify({
+          p_expense_id:
+            expenseId,
 
-            p_expense_id:
-              expenseId,
+          p_participant_token:
+            participantToken
 
-            p_participant_token:
-              participantToken
-
-          })
-
+        })
       }
     );
 
@@ -1554,21 +1777,16 @@ async function deleteOwnExpense(
 
     console.error(error);
 
-    toast(
-      error.message
-    );
+    toast(error.message);
 
   }
 
 }
 
 
-
-/*
-=====================================================
-BALANCES
-=====================================================
-*/
+/* =====================================================
+   BALANCES
+===================================================== */
 
 function renderBalances() {
 
@@ -1576,13 +1794,102 @@ function renderBalances() {
     $("balancesList");
 
 
-  container.innerHTML =
-    "";
+  container.innerHTML = "";
 
 
   if (!people.length) {
     return;
   }
+
+
+  const paid = {};
+  const owed = {};
+
+
+  people.forEach(
+    person => {
+
+      paid[person.id] = 0;
+
+      owed[person.id] = 0;
+
+    }
+  );
+
+
+  expenses.forEach(
+    expense => {
+
+      const amount =
+        Number(
+          expense.amount
+        );
+
+
+      /*
+        Money actually paid.
+      */
+
+      if (
+        paid[
+          expense.paid_by
+        ] !== undefined
+      ) {
+
+        paid[
+          expense.paid_by
+        ] += amount;
+
+      }
+
+
+      /*
+        People who owe this expense.
+      */
+
+      const ids =
+        expenseParticipants[
+          expense.id
+        ]?.length
+
+          ? expenseParticipants[
+              expense.id
+            ]
+
+          : people.map(
+              person =>
+                person.id
+            );
+
+
+      const validIds =
+        ids.filter(
+          id =>
+            owed[id] !== undefined
+        );
+
+
+      if (!validIds.length) {
+        return;
+      }
+
+
+      const share =
+        amount /
+        validIds.length;
+
+
+      validIds.forEach(
+        id => {
+
+          owed[id] +=
+            share;
+
+        }
+      );
+
+    }
+  );
 
 
   const total =
@@ -1599,52 +1906,12 @@ function renderBalances() {
     );
 
 
-  const share =
-    total /
-    people.length;
-
-
-  const paid = {};
-
-
-  people.forEach(
-    person => {
-
-      paid[person.id] =
-        0;
-
-    }
-  );
-
-
-  expenses.forEach(
-    expense => {
-
-      if (
-        paid[
-          expense.paid_by
-        ] !== undefined
-      ) {
-
-        paid[
-          expense.paid_by
-        ] +=
-          Number(
-            expense.amount
-          );
-
-      }
-
-    }
-  );
-
-
   people.forEach(
     person => {
 
       const balance =
         paid[person.id] -
-        share;
+        owed[person.id];
 
 
       let status;
@@ -1747,8 +2014,7 @@ function renderBalances() {
 
 
     summary.textContent =
-      `Total spent: ₹${total.toFixed(2)} • ` +
-      `Each share: ₹${share.toFixed(2)}`;
+      `Total spent: ₹${total.toFixed(2)} • Shares are calculated per expense`;
 
 
     container.appendChild(
@@ -1760,12 +2026,9 @@ function renderBalances() {
 }
 
 
-
-/*
-=====================================================
-SHARE MASTER LINK
-=====================================================
-*/
+/* =====================================================
+   SHARE MASTER LINK
+===================================================== */
 
 async function shareTrip() {
 
@@ -1828,12 +2091,9 @@ async function shareTrip() {
 }
 
 
-
-/*
-=====================================================
-BUTTONS
-=====================================================
-*/
+/* =====================================================
+   BUTTONS
+===================================================== */
 
 $("addPersonBtn")
   .addEventListener(
@@ -1863,24 +2123,17 @@ $("shareBtn")
   );
 
 
-
-/*
-=====================================================
-INITIAL PERSON FIELDS
-=====================================================
-*/
+/* =====================================================
+   INITIAL PEOPLE
+===================================================== */
 
 createPersonField();
-
 createPersonField();
 
 
-
-/*
-=====================================================
-START
-=====================================================
-*/
+/* =====================================================
+   START
+===================================================== */
 
 if (tripId) {
 
