@@ -7,7 +7,7 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
   >
 
   <meta
@@ -17,452 +17,265 @@
 
   <title>No Login Split</title>
 
-
   <style>
 
     * {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
     }
 
-
     body {
-
+      margin: 0;
       font-family:
         -apple-system,
         BlinkMacSystemFont,
         "Segoe UI",
         sans-serif;
-
       background: #f6f7fb;
-
       color: #202124;
-
-      min-height: 100vh;
-
     }
 
+    button,
+    input,
+    select {
+      font: inherit;
+    }
 
     .app {
-
-      max-width: 600px;
-
+      width: 100%;
+      max-width: 620px;
       margin: auto;
-
-      padding: 20px;
-
+      padding: 18px;
     }
-
 
     header {
-
       text-align: center;
-
-      padding:
-        35px 10px 25px;
-
+      padding: 28px 10px;
     }
-
 
     .logo {
-
       width: 64px;
-
       height: 64px;
-
-      margin:
-        0 auto 15px;
-
+      margin: auto;
+      margin-bottom: 14px;
       border-radius: 18px;
-
-      display: flex;
-
-      align-items: center;
-
-      justify-content: center;
-
-      font-size: 30px;
-
       background: #6c5ce7;
-
       color: white;
-
-      box-shadow:
-        0 10px 25px
-        rgba(108,92,231,.25);
-
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 800;
+      box-shadow: 0 10px 30px rgba(108,92,231,.25);
     }
-
 
     h1 {
-
-      font-size: 32px;
-
+      margin: 0;
+      font-size: 31px;
       letter-spacing: -1px;
-
     }
-
-
-    .tagline {
-
-      margin-top: 7px;
-
-      color: #777;
-
-      font-size: 15px;
-
-    }
-
-
-    .card {
-
-      background: white;
-
-      border-radius: 20px;
-
-      padding: 22px;
-
-      margin-bottom: 16px;
-
-      box-shadow:
-        0 5px 25px
-        rgba(0,0,0,.06);
-
-    }
-
 
     h2 {
-
+      margin: 0 0 15px;
       font-size: 21px;
-
-      margin-bottom: 15px;
-
     }
 
+    .tagline {
+      margin: 7px 0 0;
+      color: #777;
+      font-size: 15px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 21px;
+      margin-bottom: 16px;
+      box-shadow: 0 5px 25px rgba(0,0,0,.06);
+    }
 
     label {
-
       display: block;
-
-      font-size: 13px;
-
-      font-weight: 600;
-
-      color: #666;
-
       margin-bottom: 7px;
-
+      font-size: 13px;
+      font-weight: 700;
+      color: #666;
     }
 
-
-    input {
-
+    input,
+    select {
       width: 100%;
-
-      padding: 14px;
-
-      border:
-        1px solid #ddd;
-
+      border: 1px solid #ddd;
       border-radius: 12px;
-
-      font-size: 16px;
-
-      outline: none;
-
-      margin-bottom: 14px;
-
+      padding: 14px;
+      margin-bottom: 12px;
       background: #fafafa;
-
+      outline: none;
     }
 
-
-    input:focus {
-
+    input:focus,
+    select:focus {
       border-color: #6c5ce7;
-
       background: white;
-
     }
-
 
     button {
-
-      border: 0;
-
-      border-radius: 12px;
-
-      padding: 14px 18px;
-
-      font-size: 15px;
-
-      font-weight: 700;
-
-      cursor: pointer;
-
       width: 100%;
-
+      border: 0;
+      border-radius: 12px;
+      padding: 14px 18px;
       background: #6c5ce7;
-
       color: white;
-
-      transition: .2s;
-
+      font-weight: 700;
+      cursor: pointer;
     }
-
 
     button:active {
-
       transform: scale(.98);
-
     }
-
 
     .secondary {
-
-      background: #f0efff;
-
+      background: #efedff;
       color: #5b4bd8;
-
     }
-
 
     .danger {
-
       background: #fff0f0;
-
       color: #d63031;
-
     }
-
 
     .hidden {
-
       display: none !important;
-
     }
 
+    /*
+      PERSON INPUTS
+    */
+
+    #peopleInputs {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
 
     .person-row {
-
       display: flex;
-
-      gap: 8px;
-
       width: 100%;
-
-      margin-bottom: 9px;
-
+      gap: 8px;
     }
-
 
     .person-row input {
-
       flex: 1;
-
       min-width: 0;
-
-      margin-bottom: 0;
-
+      margin: 0;
     }
-
 
     .remove-person {
-
-      width: 46px;
-
-      min-width: 46px;
-
+      width: 48px;
+      min-width: 48px;
       padding: 0;
-
       background: #fff0f0;
-
       color: #d63031;
-
-      flex-shrink: 0;
-
+      font-size: 22px;
     }
-
 
     .expense {
-
-      border-bottom:
-        1px solid #eee;
-
-      padding: 14px 0;
-
+      padding: 15px 0;
+      border-bottom: 1px solid #eee;
     }
-
 
     .expense:last-child {
-
       border-bottom: 0;
-
     }
-
 
     .expense-top {
-
       display: flex;
-
       justify-content: space-between;
-
-      gap: 10px;
-
+      gap: 15px;
     }
-
 
     .expense-name {
-
       font-weight: 700;
-
     }
-
 
     .expense-meta {
-
+      margin-top: 5px;
       color: #777;
-
       font-size: 13px;
-
-      margin-top: 4px;
-
     }
-
 
     .expense-amount {
-
       font-weight: 800;
-
       white-space: nowrap;
-
     }
-
 
     .balance {
-
-      padding: 13px;
-
-      border-radius: 12px;
-
-      margin-bottom: 9px;
-
       background: #f7f7fb;
-
+      border-radius: 12px;
+      padding: 13px;
+      margin-bottom: 9px;
     }
-
 
     .balance-row {
-
       display: flex;
-
-      justify-content: space-between;
-
       align-items: center;
-
+      justify-content: space-between;
       gap: 10px;
-
     }
-
 
     .positive {
-
       color: #159957;
-
       font-weight: 700;
-
     }
-
 
     .negative {
-
       color: #d63031;
-
       font-weight: 700;
-
     }
-
-
-    .share-box {
-
-      background: #f4f2ff;
-
-      border-radius: 14px;
-
-      padding: 15px;
-
-      margin-top: 15px;
-
-      word-break: break-all;
-
-      font-size: 13px;
-
-    }
-
 
     .small {
-
-      font-size: 12px;
-
       color: #777;
-
+      font-size: 13px;
       line-height: 1.5;
-
     }
 
+    .share-box {
+      margin-top: 14px;
+      padding: 14px;
+      background: #f4f2ff;
+      border-radius: 13px;
+      word-break: break-all;
+      font-size: 13px;
+    }
 
     .toast {
-
       position: fixed;
-
-      bottom: 20px;
-
-      left: 20px;
-
-      right: 20px;
-
-      max-width: 560px;
-
+      left: 18px;
+      right: 18px;
+      bottom: 18px;
+      max-width: 580px;
       margin: auto;
-
       padding: 14px;
-
-      border-radius: 12px;
-
+      border-radius: 13px;
       background: #202124;
-
       color: white;
-
       text-align: center;
-
       display: none;
-
-      z-index: 99;
-
+      z-index: 1000;
     }
-
 
     @media (max-width: 480px) {
 
       .app {
-
-        padding: 14px;
-
+        padding: 13px;
       }
-
 
       header {
-
-        padding-top: 25px;
-
+        padding: 23px 8px;
       }
 
-
       h1 {
-
         font-size: 28px;
-
       }
 
     }
@@ -474,305 +287,239 @@
 
 <body>
 
+  <div class="app">
 
-<div class="app">
+    <header>
 
+      <div class="logo">
+        ÷
+      </div>
 
-  <header>
+      <h1>
+        No Login Split
+      </h1>
 
-    <div class="logo">
-      ÷
-    </div>
+      <p class="tagline">
+        Split expenses. No login. No hassle.
+      </p>
 
-    <h1>
-      No Login Split
-    </h1>
-
-    <p class="tagline">
-      Split expenses. No login. No hassle.
-    </p>
-
-  </header>
+    </header>
 
 
-  <!-- =================================================
-       HOME
-  ================================================== -->
+    <!-- HOME -->
 
-  <section id="homeScreen">
+    <section id="homeScreen">
 
+      <div class="card">
 
-    <div class="card">
+        <h2>
+          Create a new trip
+        </h2>
 
-      <h2>
-        Create a new trip
-      </h2>
+        <label>
+          Trip name
+        </label>
 
-
-      <label>
-        Trip name
-      </label>
-
-      <input
-        id="tripName"
-        placeholder="e.g. Goa Trip"
-      >
-
-
-      <label>
-        People
-      </label>
+        <input
+          id="tripName"
+          type="text"
+          placeholder="e.g. Goa Trip"
+          autocomplete="off"
+          autocapitalize="words"
+        >
 
 
-      <div id="peopleInputs">
+        <label>
+          People
+        </label>
 
-        <!-- PERSON 1 -->
+        <!-- JavaScript creates EVERY person field -->
 
-        <div class="person-row">
-
-          <input
-            class="person-input"
-            type="text"
-            placeholder="Person 1"
-            autocomplete="off"
-          >
-
-        </div>
+        <div id="peopleInputs"></div>
 
 
-        <!-- PERSON 2 -->
+        <button
+          id="addPersonBtn"
+          class="secondary"
+          type="button"
+        >
+          + Add person
+        </button>
 
-        <div class="person-row">
 
-          <input
-            class="person-input"
-            type="text"
-            placeholder="Person 2"
-            autocomplete="off"
-          >
+        <div style="height:10px"></div>
 
-          <button
-            class="remove-person"
-            type="button"
-            aria-label="Remove person"
-          >
-            ×
-          </button>
 
-        </div>
+        <button
+          id="createTripBtn"
+          type="button"
+        >
+          Create Trip
+        </button>
 
       </div>
 
 
-      <button
-        id="addPersonBtn"
-        class="secondary"
-        type="button"
-      >
-        + Add person
-      </button>
+      <div class="card">
 
-
-      <div style="height:10px"></div>
-
-
-      <button
-        id="createTripBtn"
-        type="button"
-      >
-        Create Trip
-      </button>
-
-    </div>
-
-
-    <div class="card">
-
-      <h2>
-        Already have a trip?
-      </h2>
-
-      <p class="small">
-
-        Open the trip link that was
-        shared with you.
-
-        Your expenses are stored
-        online, so refreshing the
-        browser won't erase them.
-
-      </p>
-
-    </div>
-
-
-  </section>
-
-
-  <!-- =================================================
-       TRIP
-  ================================================== -->
-
-  <section
-    id="tripScreen"
-    class="hidden"
-  >
-
-
-    <div class="card">
-
-      <h2 id="tripTitle">
-        Trip
-      </h2>
-
-
-      <p class="small">
-
-        Everyone uses the same
-        permanent trip link.
-
-      </p>
-
-
-      <div class="share-box">
-
-        <strong>
-          Trip link
-        </strong>
-
-        <div
-          id="tripLink"
-          style="margin-top:7px"
-        ></div>
-
-      </div>
-
-
-      <div style="height:10px"></div>
-
-
-      <button
-        id="shareBtn"
-        class="secondary"
-        type="button"
-      >
-        🔗 Share Trip
-      </button>
-
-    </div>
-
-
-    <div class="card">
-
-      <h2>
-        Add expense
-      </h2>
-
-
-      <label>
-        Description
-      </label>
-
-      <input
-        id="expenseDescription"
-        placeholder="e.g. Hotel"
-      >
-
-
-      <label>
-        Amount
-      </label>
-
-      <input
-        id="expenseAmount"
-        type="number"
-        inputmode="decimal"
-        placeholder="₹ 0"
-      >
-
-
-      <label>
-        Paid by
-      </label>
-
-      <select
-        id="expensePaidBy"
-        style="
-          width:100%;
-          padding:14px;
-          border:1px solid #ddd;
-          border-radius:12px;
-          font-size:16px;
-          margin-bottom:14px;
-          background:#fafafa;
-        "
-      ></select>
-
-
-      <button
-        id="addExpenseBtn"
-        type="button"
-      >
-        Add Expense
-      </button>
-
-    </div>
-
-
-    <div class="card">
-
-      <h2>
-        Expenses
-      </h2>
-
-      <div id="expensesList">
+        <h2>
+          Already have a trip?
+        </h2>
 
         <p class="small">
-          No expenses yet.
+          Open the trip link someone shared with you.
+          No login is required.
         </p>
 
       </div>
 
-    </div>
+    </section>
 
 
-    <div class="card">
+    <!-- TRIP -->
 
-      <h2>
-        Balances
-      </h2>
-
-      <div id="balancesList"></div>
-
-    </div>
+    <section
+      id="tripScreen"
+      class="hidden"
+    >
 
 
-  </section>
+      <div class="card">
+
+        <h2 id="tripTitle">
+          Trip
+        </h2>
+
+        <p class="small">
+          Everyone uses this same master link.
+        </p>
 
 
-</div>
+        <div class="share-box">
+
+          <strong>
+            Master trip link
+          </strong>
+
+          <div
+            id="tripLink"
+            style="margin-top:7px"
+          ></div>
+
+        </div>
 
 
-<div
-  id="toast"
-  class="toast"
-></div>
+        <div style="height:10px"></div>
 
 
-<script>
+        <button
+          id="shareBtn"
+          class="secondary"
+          type="button"
+        >
+          🔗 Share Trip
+        </button>
 
-  window.SUPABASE_URL =
-    "https://yfrwgfadxoabvwiuwysf.supabase.co";
+      </div>
 
 
-  window.SUPABASE_KEY =
-    "sb_publishable_BhFXD-WpddpUwxxag50fmA_N2Nawsfj";
+      <div class="card">
 
-</script>
+        <h2>
+          Add expense
+        </h2>
 
 
-<script src="app.js"></script>
+        <label>
+          Description
+        </label>
 
+        <input
+          id="expenseDescription"
+          type="text"
+          placeholder="e.g. Hotel"
+          autocomplete="off"
+        >
+
+
+        <label>
+          Amount
+        </label>
+
+        <input
+          id="expenseAmount"
+          type="number"
+          inputmode="decimal"
+          placeholder="₹ 0"
+        >
+
+
+        <label>
+          Paid by
+        </label>
+
+        <select
+          id="expensePaidBy"
+        ></select>
+
+
+        <button
+          id="addExpenseBtn"
+          type="button"
+        >
+          Add Expense
+        </button>
+
+      </div>
+
+
+      <div class="card">
+
+        <h2>
+          Expenses
+        </h2>
+
+        <div id="expensesList"></div>
+
+      </div>
+
+
+      <div class="card">
+
+        <h2>
+          Balances
+        </h2>
+
+        <div id="balancesList"></div>
+
+      </div>
+
+
+    </section>
+
+  </div>
+
+
+  <div
+    id="toast"
+    class="toast"
+  ></div>
+
+
+  <!-- SUPABASE CONFIG -->
+
+  <script>
+
+    window.SUPABASE_URL =
+      "https://yfrwgfadxoabvwiuwysf.supabase.co";
+
+    window.SUPABASE_KEY =
+      "sb_publishable_BhFXD-WpddpUwxxag50fmA_N2Nawsfj";
+
+  </script>
+
+
+  <script src="app.js"></script>
 
 </body>
 
