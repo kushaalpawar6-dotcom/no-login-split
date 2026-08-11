@@ -1,31 +1,27 @@
 const SUPABASE_URL = window.SUPABASE_URL;
 const SUPABASE_KEY = window.SUPABASE_KEY;
 
-const state = {
-  trip: null,
-  people: [],
-  expenses: [],
-  ownerToken: localStorage.getItem("nls_owner_token") || null
-};
+const params = new URLSearchParams(location.search);
+const tripId = params.get("trip");
 
-const $ = (id) => document.getElementById(id);
+let trip = null;
+let people = [];
+let expenses = [];
 
-function showToast(message) {
-  const toast = $("toast");
-  toast.textContent = message;
-  toast.style.display = "block";
+let participantToken =
+  localStorage.getItem(`nls_participant_${tripId}`) || null;
 
-  setTimeout(() => {
-    toast.style.display = "none";
-  }, 3000);
-}
+let ownerToken =
+  localStorage.getItem(`nls_owner_${tripId}`) || null;
 
-async function supabase(path, options = {}) {
+const $ = id => document.getElementById(id);
+
+async function api(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}${path}`, {
     ...options,
     headers: {
-      "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
       "Content-Type": "application/json",
       ...(options.headers || {})
     }
@@ -44,8 +40,8 @@ async function supabase(path, options = {}) {
   if (!response.ok) {
     throw new Error(
       data?.message ||
-      data?.error_description ||
       data?.hint ||
+      data?.error_description ||
       "Something went wrong"
     );
   }
@@ -53,88 +49,37 @@ async function supabase(path, options = {}) {
   return data;
 }
 
+function toast(message) {
+  const box = $("toast");
 
-/* -----------------------------------------
-   CREATE TRIP
------------------------------------------ */
-
-async function createTrip() {
-  const name = $("tripName").value.trim();
-
-  const people = [...document.querySelectorAll(".person-input")]
-    .map(input => input.value.trim())
-    .filter(Boolean);
-
-  if (!name) {
-    showToast("Please enter a trip name.");
+  if (!box) {
+    alert(message);
     return;
   }
 
-  if (people.length < 2) {
-    showToast("Add at least 2 people.");
-    return;
-  }
+  box.textContent = message;
+  box.style.display = "block";
 
-  $("createTripBtn").disabled = true;
-  $("createTripBtn").textContent = "Creating...";
+  setTimeout(() => {
+    box.style.display = "none";
+  }, 3000);
+}
 
-  try {
-    const result = await supabase("/rest/v1/rpc/create_trip", {
-      method: "POST",
-      body: JSON.stringify({
-        p_name: name,
-        p_people: people
-      })
-    });
-
-    const tripData = Array.isArray(result) ? result[0] : result;
-
-    if (!tripData?.trip_id || !tripData?.owner_token) {
-      throw new Error("Trip creation failed.");
-    }
-
-    state.trip = {
-      id: tripData.trip_id,
-      name: tripData.name,
-      owner: true
-    };
-
-    state.people = tripData.people || [];
-    state.expenses = [];
-    state.ownerToken = tripData.owner_token;
-
-    localStorage.setItem(
-      "nls_owner_token",
-      state.ownerToken
-    );
-
-    history.replaceState(
-      {},
-      "",
-      `${location.pathname}?trip=${state.trip.id}`
-    );
-
-    await loadTrip();
-
-    showToast("Trip created successfully!");
-
-  } catch (error) {
-    console.error(error);
-    showToast(error.message);
-  }
-
-  $("createTripBtn").disabled = false;
-  $("createTripBtn").textContent = "Create Trip";
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 
-/* -----------------------------------------
-   LOAD TRIP
------------------------------------------ */
+/* =====================================================
+   HOME / TRIP LOADING
+===================================================== */
 
-async function loadTrip() {
-  const tripId = new URLSearchParams(location.search).get("trip");
-
+async function start() {
   if (!tripId) {
     showHome();
     return;
@@ -143,69 +88,70 @@ async function loadTrip() {
   $("homeScreen").classList.add("hidden");
   $("tripScreen").classList.remove("hidden");
 
+  await loadTrip();
+}
+
+async function loadTrip() {
   try {
-    const trips = await supabase(
+    const trips = await api(
       `/rest/v1/trip_public?id=eq.${encodeURIComponent(tripId)}&select=id,name,created_at`
     );
 
-    if (!trips.length) {
-      showToast("Trip not found.");
+    if (!trips || !trips.length) {
+      toast("Trip not found.");
       showHome();
       return;
     }
 
-    state.trip = trips[0];
+    trip = trips[0];
 
-    const people = await supabase(
-      `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name&order=created_at.asc`
+    people = await api(
+      `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
     );
 
-    const expenses = await supabase(
-      `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,paid_by,created_at&order=created_at.desc`
+    expenses = await api(
+      `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,paid_by,created_by_participant_id,created_at&order=created_at.desc`
     );
 
-    state.people = people || [];
-    state.expenses = expenses || [];
-
-    renderTrip();
+    render();
 
   } catch (error) {
     console.error(error);
-    showToast(error.message);
+    toast(error.message);
   }
 }
 
+function showHome() {
+  $("homeScreen").classList.remove("hidden");
+  $("tripScreen").classList.add("hidden");
+}
 
-/* -----------------------------------------
-   RENDER TRIP
------------------------------------------ */
 
-function renderTrip() {
-  $("tripTitle").textContent = state.trip.name;
+/* =====================================================
+   RENDER
+===================================================== */
 
-  const url = window.location.href;
-  $("tripLink").textContent = url;
+function render() {
+  $("tripTitle").textContent = trip.name;
+  $("tripLink").textContent = location.href;
 
-  populatePaidBy();
+  populatePayers();
   renderExpenses();
   renderBalances();
 
-  if (state.ownerToken) {
-    $("ownerPanel").classList.remove("hidden");
+  if (!participantToken && !ownerToken) {
+    showJoinBox();
+  } else {
+    hideJoinBox();
   }
 }
 
-
-/* -----------------------------------------
-   PEOPLE
------------------------------------------ */
-
-function populatePaidBy() {
+function populatePayers() {
   const select = $("expensePaidBy");
 
   select.innerHTML = "";
 
-  state.people.forEach(person => {
+  people.forEach(person => {
     const option = document.createElement("option");
 
     option.value = person.id;
@@ -216,62 +162,142 @@ function populatePaidBy() {
 }
 
 
-/* -----------------------------------------
-   ADD PERSON FIELD
------------------------------------------ */
+/* =====================================================
+   JOIN TRIP
+===================================================== */
 
-function addPersonField() {
-  const container = $("peopleInputs");
+function showJoinBox() {
+  if ($("joinBox")) return;
 
-  const row = document.createElement("div");
-  row.className = "person-row";
+  const card = document.createElement("div");
 
-  row.innerHTML = `
+  card.className = "card";
+  card.id = "joinBox";
+
+  card.innerHTML = `
+    <h2>Join this trip</h2>
+
+    <p class="small">
+      Choose your name. You don't need an account.
+      Your private permission is saved only on this device.
+    </p>
+
+    <div style="height:12px"></div>
+
+    <label>Your name</label>
+
     <input
-      class="person-input"
-      placeholder="Person's name"
+      id="joinName"
+      placeholder="e.g. Rahul"
     >
-    <button
-      class="remove-person"
-      type="button"
-    >×</button>
+
+    <button id="joinBtn">
+      Join Trip
+    </button>
   `;
 
-  row.querySelector(".remove-person").onclick = () => {
-    row.remove();
-  };
+  $("tripScreen").insertBefore(
+    card,
+    $("tripScreen").firstChild
+  );
 
-  container.appendChild(row);
+  $("joinBtn").onclick = joinTrip;
+}
+
+function hideJoinBox() {
+  const box = $("joinBox");
+
+  if (box) {
+    box.remove();
+  }
+}
+
+async function joinTrip() {
+  const name = $("joinName").value.trim();
+
+  if (!name) {
+    toast("Enter your name.");
+    return;
+  }
+
+  $("joinBtn").disabled = true;
+  $("joinBtn").textContent = "Joining...";
+
+  try {
+    const result = await api(
+      "/rest/v1/rpc/join_trip",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          p_trip_id: tripId,
+          p_name: name
+        })
+      }
+    );
+
+    const data =
+      Array.isArray(result)
+        ? result[0]
+        : result;
+
+    if (!data?.participant_token) {
+      throw new Error("Could not create participant permission.");
+    }
+
+    participantToken =
+      data.participant_token;
+
+    localStorage.setItem(
+      `nls_participant_${tripId}`,
+      participantToken
+    );
+
+    toast(`Welcome, ${data.name}!`);
+
+    await loadTrip();
+
+  } catch (error) {
+    console.error(error);
+    toast(error.message);
+
+    $("joinBtn").disabled = false;
+    $("joinBtn").textContent = "Join Trip";
+  }
 }
 
 
-/* -----------------------------------------
+/* =====================================================
    ADD EXPENSE
------------------------------------------ */
+===================================================== */
 
 async function addExpense() {
-  const description = $("expenseDescription")
-    .value
-    .trim();
 
-  const amount = Number(
-    $("expenseAmount").value
-  );
+  if (!participantToken && !ownerToken) {
+    toast("Join the trip first.");
+    return;
+  }
 
-  const paidBy = $("expensePaidBy").value;
+  const description =
+    $("expenseDescription").value.trim();
+
+  const amount =
+    Number($("expenseAmount").value);
+
+  const paidBy =
+    $("expensePaidBy").value;
 
   if (!description) {
-    showToast("Enter an expense description.");
+    toast("Enter a description.");
     return;
   }
 
   if (!amount || amount <= 0) {
-    showToast("Enter a valid amount.");
+    toast("Enter a valid amount.");
     return;
   }
 
   if (!paidBy) {
-    showToast("Select who paid.");
+    toast("Select who paid.");
     return;
   }
 
@@ -279,29 +305,37 @@ async function addExpense() {
   $("addExpenseBtn").textContent = "Adding...";
 
   try {
-    await supabase("/rest/v1/expenses", {
-      method: "POST",
-      headers: {
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify({
-        trip_id: state.trip.id,
-        description,
-        amount,
-        paid_by: paidBy
-      })
-    });
+
+    if (!participantToken) {
+      throw new Error(
+        "Join the trip before adding expenses."
+      );
+    }
+
+    await api(
+      "/rest/v1/rpc/add_expense_secure",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          p_trip_id: tripId,
+          p_participant_token: participantToken,
+          p_description: description,
+          p_amount: amount,
+          p_paid_by: paidBy
+        })
+      }
+    );
 
     $("expenseDescription").value = "";
     $("expenseAmount").value = "";
 
     await loadTrip();
 
-    showToast("Expense added.");
+    toast("Expense added.");
 
   } catch (error) {
     console.error(error);
-    showToast(error.message);
+    toast(error.message);
   }
 
   $("addExpenseBtn").disabled = false;
@@ -309,61 +343,97 @@ async function addExpense() {
 }
 
 
-/* -----------------------------------------
-   EXPENSES
------------------------------------------ */
+/* =====================================================
+   EXPENSE DISPLAY
+===================================================== */
 
 function renderExpenses() {
+
   const container = $("expensesList");
 
   container.innerHTML = "";
 
-  if (!state.expenses.length) {
+  if (!expenses.length) {
     container.innerHTML =
       `<p class="small">No expenses yet.</p>`;
     return;
   }
 
-  state.expenses.forEach(expense => {
+  expenses.forEach(expense => {
 
     const payer =
-      state.people.find(
-        person => person.id === expense.paid_by
+      people.find(
+        p => p.id === expense.paid_by
       );
 
-    const item = document.createElement("div");
+    const creator =
+      people.find(
+        p =>
+          p.participant_id ===
+          expense.created_by_participant_id
+      );
+
+    const item =
+      document.createElement("div");
 
     item.className = "expense";
 
-    const deleteButton = state.ownerToken
-      ? `
+    let deleteButton = "";
+
+    /*
+      Participant:
+      can delete only their own expense.
+
+      Owner:
+      can delete any expense.
+    */
+
+    const isCreator =
+      participantToken &&
+      creator &&
+      getStoredParticipantId() ===
+        creator.participant_id;
+
+    if (isCreator) {
+      deleteButton = `
         <button
           class="danger"
           style="margin-top:10px;width:auto;padding:8px 12px"
-          onclick="deleteExpense('${expense.id}')"
+          onclick="deleteOwnExpense('${expense.id}')"
         >
           Delete
         </button>
-      `
-      : "";
+      `;
+    }
 
     item.innerHTML = `
       <div class="expense-top">
+
         <div>
+
           <div class="expense-name">
             ${escapeHtml(expense.description)}
           </div>
 
           <div class="expense-meta">
-            Paid by ${escapeHtml(
-              payer ? payer.name : "Unknown"
+            Paid by
+            ${escapeHtml(
+              payer?.name || "Unknown"
             )}
+
+            ${
+              creator
+                ? ` • Added by ${escapeHtml(creator.name)}`
+                : ""
+            }
           </div>
+
         </div>
 
         <div class="expense-amount">
           ₹${Number(expense.amount).toFixed(2)}
         </div>
+
       </div>
 
       ${deleteButton}
@@ -374,83 +444,117 @@ function renderExpenses() {
 }
 
 
-/* -----------------------------------------
-   DELETE EXPENSE
------------------------------------------ */
+/* =====================================================
+   PARTICIPANT ID
+===================================================== */
 
-async function deleteExpense(expenseId) {
+let storedParticipantId =
+  localStorage.getItem(
+    `nls_participant_id_${tripId}`
+  );
 
-  if (!state.ownerToken) {
-    showToast("Owner permission required.");
+function getStoredParticipantId() {
+  return storedParticipantId;
+}
+
+
+/*
+  We need the participant ID after joining.
+*/
+
+async function refreshParticipantIdentity() {
+
+  if (!participantToken) return;
+
+  /*
+    We don't expose token hashes.
+    We identify the participant through
+    the local participant ID saved during join.
+  */
+
+}
+
+
+/* =====================================================
+   DELETE OWN EXPENSE
+===================================================== */
+
+async function deleteOwnExpense(expenseId) {
+
+  if (!participantToken) {
+    toast("Permission required.");
     return;
   }
 
-  const confirmed = confirm(
-    "Delete this expense?"
-  );
-
-  if (!confirmed) return;
+  if (!confirm("Delete your expense?")) {
+    return;
+  }
 
   try {
 
-    await supabase(
-      "/rest/v1/rpc/delete_expense",
+    await api(
+      "/rest/v1/rpc/delete_my_expense",
       {
         method: "POST",
         body: JSON.stringify({
           p_expense_id: expenseId,
-          p_owner_token: state.ownerToken
+          p_participant_token: participantToken
         })
       }
     );
 
     await loadTrip();
 
-    showToast("Expense deleted.");
+    toast("Expense deleted.");
 
   } catch (error) {
     console.error(error);
-    showToast(error.message);
+    toast(error.message);
   }
 }
 
 
-/* -----------------------------------------
-   BALANCE CALCULATION
------------------------------------------ */
+/* =====================================================
+   BALANCES
+===================================================== */
 
 function renderBalances() {
-  const container = $("balancesList");
+
+  const container =
+    $("balancesList");
 
   container.innerHTML = "";
 
-  if (!state.people.length) {
-    return;
-  }
+  if (!people.length) return;
 
-  const total = state.expenses.reduce(
-    (sum, expense) =>
-      sum + Number(expense.amount),
-    0
-  );
+  const total =
+    expenses.reduce(
+      (sum, e) =>
+        sum + Number(e.amount),
+      0
+    );
 
   const share =
-    total / state.people.length;
+    total / people.length;
 
   const paid = {};
 
-  state.people.forEach(person => {
-    paid[person.id] = 0;
+  people.forEach(p => {
+    paid[p.id] = 0;
   });
 
-  state.expenses.forEach(expense => {
-    if (paid[expense.paid_by] !== undefined) {
-      paid[expense.paid_by] +=
-        Number(expense.amount);
+  expenses.forEach(e => {
+
+    if (
+      paid[e.paid_by] !== undefined
+    ) {
+      paid[e.paid_by] +=
+        Number(e.amount);
     }
+
   });
 
-  state.people.forEach(person => {
+  people.forEach(person => {
 
     const balance =
       paid[person.id] - share;
@@ -460,36 +564,48 @@ function renderBalances() {
 
     row.className = "balance";
 
-    let amountText = "";
+    let status;
 
     if (balance > 0.005) {
-      amountText =
-        `<span class="positive">
+
+      status = `
+        <span class="positive">
           gets ₹${balance.toFixed(2)}
-        </span>`;
+        </span>
+      `;
+
     } else if (balance < -0.005) {
-      amountText =
-        `<span class="negative">
+
+      status = `
+        <span class="negative">
           owes ₹${Math.abs(balance).toFixed(2)}
-        </span>`;
+        </span>
+      `;
+
     } else {
-      amountText =
-        `<span>
+
+      status = `
+        <span>
           settled
-        </span>`;
+        </span>
+      `;
+
     }
 
     row.innerHTML = `
       <div class="balance-row">
+
         <strong>
           ${escapeHtml(person.name)}
         </strong>
 
-        ${amountText}
+        ${status}
+
       </div>
     `;
 
     container.appendChild(row);
+
   });
 
   if (total > 0) {
@@ -503,29 +619,32 @@ function renderBalances() {
 
     summary.textContent =
       `Total spent: ₹${total.toFixed(2)} • ` +
-      `Each person's share: ₹${share.toFixed(2)}`;
+      `Each share: ₹${share.toFixed(2)}`;
 
     container.appendChild(summary);
+
   }
 }
 
 
-/* -----------------------------------------
+/* =====================================================
    SHARE
------------------------------------------ */
+===================================================== */
 
 async function shareTrip() {
 
-  const url = window.location.href;
+  const url =
+    location.href;
 
   try {
 
     if (navigator.share) {
 
       await navigator.share({
-        title: state.trip.name +
-          " — No Login Split",
-        text: "Join our expense split",
+        title:
+          `${trip.name} — No Login Split`,
+        text:
+          "Join our expense split",
         url
       });
 
@@ -533,115 +652,213 @@ async function shareTrip() {
 
       await navigator.clipboard.writeText(url);
 
-      showToast("Trip link copied!");
+      toast("Trip link copied!");
 
     }
 
   } catch (error) {
 
     if (error.name !== "AbortError") {
-      showToast("Could not share the link.");
+      toast("Unable to share.");
     }
 
   }
 }
 
 
-/* -----------------------------------------
-   OWNER MODE
------------------------------------------ */
+/* =====================================================
+   ADD PERSON FIELD — OWNER ONLY LATER
+===================================================== */
 
-function ownerMode() {
+function addPersonField() {
 
-  if (state.ownerToken) {
-    showToast("Owner mode is already active.");
+  const container =
+    $("peopleInputs");
+
+  const row =
+    document.createElement("div");
+
+  row.className =
+    "person-row";
+
+  row.innerHTML = `
+    <input
+      class="person-input"
+      placeholder="Person's name"
+    >
+
+    <button
+      class="remove-person"
+      type="button"
+    >
+      ×
+    </button>
+  `;
+
+  row.querySelector(
+    ".remove-person"
+  ).onclick = () => row.remove();
+
+  container.appendChild(row);
+}
+
+
+/* =====================================================
+   CREATE TRIP
+===================================================== */
+
+async function createTrip() {
+
+  const name =
+    $("tripName").value.trim();
+
+  const peopleNames =
+    [...document.querySelectorAll(
+      ".person-input"
+    )]
+      .map(input => input.value.trim())
+      .filter(Boolean);
+
+  if (!name) {
+    toast("Enter a trip name.");
     return;
   }
 
-  const token = prompt(
-    "Enter the owner's permission code:"
-  );
+  if (peopleNames.length < 2) {
+    toast("Add at least 2 people.");
+    return;
+  }
 
-  if (!token) return;
+  $("createTripBtn").disabled = true;
+  $("createTripBtn").textContent =
+    "Creating...";
 
-  localStorage.setItem(
-    "nls_owner_token",
-    token.trim()
-  );
+  try {
 
-  state.ownerToken = token.trim();
+    const result =
+      await api(
+        "/rest/v1/rpc/create_trip",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            p_name: name,
+            p_people: peopleNames
+          })
+        }
+      );
 
-  renderTrip();
+    const data =
+      Array.isArray(result)
+        ? result[0]
+        : result;
 
-  showToast("Owner mode enabled.");
+    if (
+      !data?.trip_id ||
+      !data?.owner_token
+    ) {
+      throw new Error(
+        "Trip creation failed."
+      );
+    }
+
+    ownerToken =
+      data.owner_token;
+
+    localStorage.setItem(
+      `nls_owner_${data.trip_id}`,
+      ownerToken
+    );
+
+    /*
+      Owner is automatically joined as
+      the first participant.
+
+      We join using the first name.
+    */
+
+    const firstName =
+      peopleNames[0];
+
+    const joined =
+      await api(
+        "/rest/v1/rpc/join_trip",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            p_trip_id: data.trip_id,
+            p_name: firstName
+          })
+        }
+      );
+
+    const participant =
+      Array.isArray(joined)
+        ? joined[0]
+        : joined;
+
+    participantToken =
+      participant.participant_token;
+
+    storedParticipantId =
+      participant.participant_id;
+
+    localStorage.setItem(
+      `nls_participant_${data.trip_id}`,
+      participantToken
+    );
+
+    localStorage.setItem(
+      `nls_participant_id_${data.trip_id}`,
+      storedParticipantId
+    );
+
+    location.href =
+      `${location.pathname}?trip=${data.trip_id}`;
+
+  } catch (error) {
+
+    console.error(error);
+    toast(error.message);
+
+  }
+
+  $("createTripBtn").disabled = false;
+  $("createTripBtn").textContent =
+    "Create Trip";
 }
 
 
-/* -----------------------------------------
-   HOME
------------------------------------------ */
-
-function showHome() {
-
-  $("homeScreen").classList.remove("hidden");
-  $("tripScreen").classList.add("hidden");
-
-}
-
-
-/* -----------------------------------------
-   SECURITY / HTML ESCAPING
------------------------------------------ */
-
-function escapeHtml(value) {
-
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-
-}
-
-
-/* -----------------------------------------
+/* =====================================================
    EVENTS
------------------------------------------ */
+===================================================== */
 
 $("addPersonBtn")
-  .addEventListener(
+  ?.addEventListener(
     "click",
     addPersonField
   );
 
 $("createTripBtn")
-  .addEventListener(
+  ?.addEventListener(
     "click",
     createTrip
   );
 
 $("addExpenseBtn")
-  .addEventListener(
+  ?.addEventListener(
     "click",
     addExpense
   );
 
 $("shareBtn")
-  .addEventListener(
+  ?.addEventListener(
     "click",
     shareTrip
   );
 
-$("ownerBtn")
-  .addEventListener(
-    "click",
-    ownerMode
-  );
 
-
-/* -----------------------------------------
+/* =====================================================
    START
------------------------------------------ */
+===================================================== */
 
-loadTrip();
+start();
