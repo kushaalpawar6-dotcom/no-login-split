@@ -5,26 +5,44 @@ const SUPABASE_KEY =
   window.SUPABASE_KEY;
 
 const tripId =
-  new URLSearchParams(window.location.search).get("trip");
+  new URLSearchParams(
+    window.location.search
+  ).get("trip");
+
 
 let trip = null;
 let people = [];
 let expenses = [];
 
+
+/*
+=====================================================
+CURRENT USER / MEMBER
+=====================================================
+*/
+
 let participantToken =
   tripId
-    ? localStorage.getItem(`nls_participant_${tripId}`)
+    ? localStorage.getItem(
+        `nls_participant_${tripId}`
+      )
     : null;
+
 
 let participantId =
   tripId
-    ? localStorage.getItem(`nls_participant_id_${tripId}`)
+    ? localStorage.getItem(
+        `nls_participant_id_${tripId}`
+      )
     : null;
 
 
-/* =====================================================
-   HELPERS
-===================================================== */
+
+/*
+=====================================================
+HELPERS
+=====================================================
+*/
 
 function $(id) {
   return document.getElementById(id);
@@ -33,19 +51,28 @@ function $(id) {
 
 function toast(message) {
 
-  const box = $("toast");
+  const box =
+    $("toast");
 
   if (!box) {
     alert(message);
     return;
   }
 
-  box.textContent = message;
-  box.style.display = "block";
+  box.textContent =
+    message;
+
+  box.style.display =
+    "block";
+
 
   setTimeout(() => {
-    box.style.display = "none";
+
+    box.style.display =
+      "none";
+
   }, 3000);
+
 }
 
 
@@ -57,33 +84,44 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+
 }
 
 
-/* =====================================================
-   SUPABASE API
-===================================================== */
 
-async function api(path, options = {}) {
+/*
+=====================================================
+SUPABASE API
+=====================================================
+*/
 
-  const response = await fetch(
-    `${SUPABASE_URL}${path}`,
-    {
-      ...options,
+async function api(
+  path,
+  options = {}
+) {
 
-      headers: {
-        apikey: SUPABASE_KEY,
+  const response =
+    await fetch(
+      `${SUPABASE_URL}${path}`,
+      {
+        ...options,
 
-        Authorization:
-          `Bearer ${SUPABASE_KEY}`,
+        headers: {
 
-        "Content-Type":
-          "application/json",
+          apikey:
+            SUPABASE_KEY,
 
-        ...(options.headers || {})
+          Authorization:
+            `Bearer ${SUPABASE_KEY}`,
+
+          "Content-Type":
+            "application/json",
+
+          ...(options.headers || {})
+
+        }
       }
-    }
-  );
+    );
 
 
   const text =
@@ -102,7 +140,8 @@ async function api(path, options = {}) {
 
   } catch {
 
-    data = text;
+    data =
+      text;
 
   }
 
@@ -120,12 +159,16 @@ async function api(path, options = {}) {
 
 
   return data;
+
 }
 
 
-/* =====================================================
-   PEOPLE
-===================================================== */
+
+/*
+=====================================================
+PEOPLE INPUTS
+=====================================================
+*/
 
 let personCounter = 0;
 
@@ -140,17 +183,23 @@ function createPersonField() {
 
 
   const row =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
+
 
   row.className =
     "person-row";
 
 
   const input =
-    document.createElement("input");
+    document.createElement(
+      "input"
+    );
 
 
-  input.type = "text";
+  input.type =
+    "text";
 
   input.className =
     "person-input";
@@ -159,10 +208,6 @@ function createPersonField() {
   input.placeholder =
     `Person ${personCounter}`;
 
-
-  /*
-    Safari autofill protection
-  */
 
   input.autocomplete =
     "new-password";
@@ -181,26 +226,24 @@ function createPersonField() {
     `person_${Date.now()}_${personCounter}`;
 
 
-  /*
-    VERY IMPORTANT:
-    New field is always blank.
-  */
-
-  input.defaultValue = "";
-
-  input.value = "";
+  input.value =
+    "";
 
 
   const remove =
-    document.createElement("button");
+    document.createElement(
+      "button"
+    );
 
 
-  remove.type = "button";
+  remove.type =
+    "button";
 
   remove.className =
     "remove-person";
 
-  remove.textContent = "×";
+  remove.textContent =
+    "×";
 
 
   remove.onclick =
@@ -213,21 +256,24 @@ function createPersonField() {
     };
 
 
-  row.appendChild(input);
+  row.appendChild(
+    input
+  );
 
-  row.appendChild(remove);
+  row.appendChild(
+    remove
+  );
 
-  container.appendChild(row);
 
+  container.appendChild(
+    row
+  );
 
-  /*
-    Safari sometimes restores input values
-    after the element is added.
-  */
 
   setTimeout(() => {
 
-    input.value = "";
+    input.value =
+      "";
 
   }, 0);
 
@@ -265,9 +311,12 @@ function addPerson() {
 }
 
 
-/* =====================================================
-   CREATE TRIP
-===================================================== */
+
+/*
+=====================================================
+CREATE TRIP
+=====================================================
+*/
 
 async function createTrip() {
 
@@ -285,22 +334,16 @@ async function createTrip() {
     );
 
 
-  /*
-    Read each input separately.
-  */
-
   const names =
-    inputs.map(
-      input =>
-        input.value.trim()
-    );
-
-
-  const validNames =
-    names.filter(
-      name =>
-        name.length > 0
-    );
+    inputs
+      .map(
+        input =>
+          input.value.trim()
+      )
+      .filter(
+        name =>
+          name.length > 0
+      );
 
 
   if (!tripName) {
@@ -310,25 +353,23 @@ async function createTrip() {
     );
 
     return;
+
   }
 
 
-  if (validNames.length < 2) {
+  if (names.length < 2) {
 
     toast(
       "Add at least 2 people."
     );
 
     return;
+
   }
 
 
-  /*
-    Check duplicate names.
-  */
-
   const lowerNames =
-    validNames.map(
+    names.map(
       name =>
         name.toLowerCase()
     );
@@ -336,7 +377,7 @@ async function createTrip() {
 
   if (
     new Set(lowerNames).size !==
-    validNames.length
+    names.length
   ) {
 
     toast(
@@ -344,17 +385,26 @@ async function createTrip() {
     );
 
     return;
+
   }
 
 
-  $("createTripBtn").disabled =
+  const button =
+    $("createTripBtn");
+
+
+  button.disabled =
     true;
 
-  $("createTripBtn").textContent =
+  button.textContent =
     "Creating...";
 
 
   try {
+
+    /*
+    Create trip + members.
+    */
 
     const result =
       await api(
@@ -371,7 +421,7 @@ async function createTrip() {
                 tripName,
 
               p_people:
-                validNames
+                names
 
             })
 
@@ -399,7 +449,8 @@ async function createTrip() {
 
 
     /*
-      Join as first person.
+    The creator automatically becomes
+    the first member.
     */
 
     const joined =
@@ -417,12 +468,12 @@ async function createTrip() {
                 newTripId,
 
               p_name:
-                validNames[0]
+                names[0]
 
             })
 
-        }
-      );
+          }
+        );
 
 
     const participant =
@@ -436,41 +487,35 @@ async function createTrip() {
     ) {
 
       throw new Error(
-        "Could not create participant permission."
+        "Could not create your permission."
       );
 
     }
 
 
-    participantToken =
-      participant.participant_token;
-
-
-    participantId =
-      participant.participant_id;
-
-
     localStorage.setItem(
       `nls_participant_${newTripId}`,
-      participantToken
+      participant.participant_token
     );
 
 
     localStorage.setItem(
       `nls_participant_id_${newTripId}`,
-      participantId
+      participant.participant_id
     );
 
 
     /*
-      ONE MASTER LINK.
+    ONE MASTER LINK.
     */
 
     window.location.href =
       `${window.location.pathname}?trip=${newTripId}`;
 
+  }
 
-  } catch (error) {
+
+  catch (error) {
 
     console.error(error);
 
@@ -478,25 +523,31 @@ async function createTrip() {
       error.message
     );
 
+    button.disabled =
+      false;
+
+    button.textContent =
+      "Create Trip";
+
   }
-
-
-  $("createTripBtn").disabled =
-    false;
-
-  $("createTripBtn").textContent =
-    "Create Trip";
 
 }
 
 
-/* =====================================================
-   LOAD TRIP
-===================================================== */
+
+/*
+=====================================================
+LOAD TRIP
+=====================================================
+*/
 
 async function loadTrip() {
 
   try {
+
+    /*
+    Load trip.
+    */
 
     const trips =
       await api(
@@ -516,6 +567,7 @@ async function loadTrip() {
       showHome();
 
       return;
+
     }
 
 
@@ -523,11 +575,19 @@ async function loadTrip() {
       trips[0];
 
 
+    /*
+    Load ALL members.
+    */
+
     people =
       await api(
         `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
       );
 
+
+    /*
+    Load expenses.
+    */
 
     expenses =
       await api(
@@ -538,7 +598,9 @@ async function loadTrip() {
     renderTrip();
 
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.error(error);
 
@@ -551,9 +613,12 @@ async function loadTrip() {
 }
 
 
-/* =====================================================
-   SCREEN
-===================================================== */
+
+/*
+=====================================================
+SCREENS
+=====================================================
+*/
 
 function showHome() {
 
@@ -583,9 +648,12 @@ function showTrip() {
 }
 
 
-/* =====================================================
-   RENDER TRIP
-===================================================== */
+
+/*
+=====================================================
+RENDER TRIP
+=====================================================
+*/
 
 function renderTrip() {
 
@@ -602,125 +670,285 @@ function renderTrip() {
     window.location.href;
 
 
+  /*
+  Fill payer dropdown.
+  */
+
   populatePayers();
 
+
+  /*
+  Show members / select current member.
+  */
+
+  renderMemberSelector();
+
+
+  /*
+  Show expenses.
+  */
+
   renderExpenses();
+
+
+  /*
+  Show balances.
+  */
 
   renderBalances();
 
 }
 
 
-/* =====================================================
-   JOIN TRIP
-===================================================== */
 
-function showJoinBox() {
+/*
+=====================================================
+MEMBER SELECTOR
+=====================================================
+*/
 
-  if ($("joinBox")) {
-    return;
+function renderMemberSelector() {
+
+  /*
+  If the user has already selected a member
+  on this device, don't show the selector.
+  */
+
+  if (participantId) {
+
+    const existing =
+      people.find(
+        person =>
+          person.participant_id ===
+          participantId
+      );
+
+
+    if (existing) {
+
+      hideMemberSelector();
+
+      return;
+
+    }
+
+    /*
+    Stored ID is no longer valid.
+    */
+
+    participantId =
+      null;
+
+    participantToken =
+      null;
+
+    localStorage.removeItem(
+      `nls_participant_${tripId}`
+    );
+
+    localStorage.removeItem(
+      `nls_participant_id_${tripId}`
+    );
+
   }
 
 
-  const card =
-    document.createElement("div");
+  /*
+  No member selected yet.
+
+  Show the EXISTING members.
+
+  No "Join Trip".
+  */
+
+  showMemberSelector();
+
+}
 
 
-  card.id =
-    "joinBox";
+function showMemberSelector() {
 
-  card.className =
-    "card";
+  let box =
+    $("memberSelector");
 
 
-  card.innerHTML = `
+  if (!box) {
 
-    <h2>
-      Join this trip
-    </h2>
+    box =
+      document.createElement(
+        "div"
+      );
 
-    <p class="small">
-      Enter your name to join the trip.
-    </p>
 
-    <label>
-      Your name
-    </label>
+    box.id =
+      "memberSelector";
 
-    <input
-      id="joinName"
-      type="text"
-      placeholder="e.g. Aman"
-      autocomplete="off"
+
+    box.className =
+      "card";
+
+
+    box.style.marginBottom =
+      "16px";
+
+
+    $("tripScreen")
+      .insertBefore(
+        box,
+        $("tripScreen").firstChild
+      );
+
+  }
+
+
+  box.innerHTML = `
+
+    <div class="section-title">
+
+      <div class="section-icon">
+        👤
+      </div>
+
+      <div>
+
+        <h2>
+          Who are you?
+        </h2>
+
+        <p>
+          Select your name to use this trip.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div
+      id="memberButtons"
+      style="
+        display:flex;
+        flex-direction:column;
+        gap:9px;
+      "
     >
 
-    <button
-      id="joinBtn"
-      type="button"
-    >
-      Join Trip
-    </button>
+      ${
+        people
+          .map(
+            person => `
+
+              <button
+                type="button"
+                class="member-choice"
+                onclick="
+                  selectMember('${person.id}')
+                "
+                style="
+                  width:100%;
+                  min-height:48px;
+                  border:1px solid #e8eaf0;
+                  border-radius:14px;
+                  background:#fafbfe;
+                  color:#151823;
+                  font-weight:700;
+                  text-align:left;
+                  padding:0 15px;
+                "
+              >
+
+                ${escapeHtml(
+                  person.name
+                )}
+
+              </button>
+
+            `
+          )
+          .join("")
+      }
+
+    </div>
 
   `;
 
-
-  $("tripScreen")
-    .insertBefore(
-      card,
-      $("tripScreen").firstChild
-    );
-
-
-  $("joinBtn")
-    .onclick =
-    joinTrip;
-
 }
 
 
-function hideJoinBox() {
+function hideMemberSelector() {
 
   const box =
-    $("joinBox");
+    $("memberSelector");
 
 
   if (box) {
+
     box.remove();
+
   }
 
 }
 
 
-/* =====================================================
-   JOIN
-===================================================== */
 
-async function joinTrip() {
+/*
+=====================================================
+SELECT MEMBER
+=====================================================
+*/
 
-  const name =
-    $("joinName")
-      .value
-      .trim();
+async function selectMember(
+  personId
+) {
+
+  const person =
+    people.find(
+      p =>
+        String(p.id) ===
+        String(personId)
+    );
 
 
-  if (!name) {
+  if (!person) {
 
     toast(
-      "Enter your name."
+      "Member not found."
     );
 
     return;
+
   }
 
 
-  $("joinBtn").disabled =
-    true;
+  /*
+  Show a temporary state.
+  */
 
-  $("joinBtn").textContent =
-    "Joining...";
+  const buttons =
+    document.querySelectorAll(
+      ".member-choice"
+    );
+
+
+  buttons.forEach(
+    button => {
+
+      button.disabled =
+        true;
+
+    }
+  );
 
 
   try {
+
+    /*
+    IMPORTANT:
+
+    We use the EXISTING member name.
+
+    No one types a new name.
+    */
 
     const result =
       await api(
@@ -737,12 +965,12 @@ async function joinTrip() {
                 tripId,
 
               p_name:
-                name
+                person.name
 
             })
 
-        }
-      );
+          }
+        );
 
 
     const participant =
@@ -756,11 +984,15 @@ async function joinTrip() {
     ) {
 
       throw new Error(
-        "Could not join trip."
+        "Could not select this member."
       );
 
     }
 
+
+    /*
+    Save permission.
+    */
 
     participantToken =
       participant.participant_token;
@@ -782,15 +1014,28 @@ async function joinTrip() {
     );
 
 
+    /*
+    Immediately remove selector.
+    */
+
+    hideMemberSelector();
+
+
     toast(
-      `Welcome, ${participant.name}!`
+      `You're using ${person.name}'s profile.`
     );
 
 
+    /*
+    Reload everything.
+    */
+
     await loadTrip();
 
+  }
 
-  } catch (error) {
+
+  catch (error) {
 
     console.error(error);
 
@@ -799,25 +1044,36 @@ async function joinTrip() {
     );
 
 
-    $("joinBtn").disabled =
-      false;
+    buttons.forEach(
+      button => {
 
-    $("joinBtn").textContent =
-      "Join Trip";
+        button.disabled =
+          false;
+
+      }
+    );
 
   }
 
 }
 
 
-/* =====================================================
-   PAYERS
-===================================================== */
+
+/*
+=====================================================
+PAYERS
+=====================================================
+*/
 
 function populatePayers() {
 
   const select =
     $("expensePaidBy");
+
+
+  if (!select) {
+    return;
+  }
 
 
   select.innerHTML =
@@ -841,6 +1097,23 @@ function populatePayers() {
         person.name;
 
 
+      /*
+      If current member is known,
+      automatically select them.
+      */
+
+      if (
+        participantId &&
+        String(person.participant_id) ===
+        String(participantId)
+      ) {
+
+        option.selected =
+          true;
+
+      }
+
+
       select.appendChild(
         option
       );
@@ -851,21 +1124,29 @@ function populatePayers() {
 }
 
 
-/* =====================================================
-   ADD EXPENSE
-===================================================== */
+
+/*
+=====================================================
+ADD EXPENSE
+=====================================================
+*/
 
 async function addExpense() {
 
+  /*
+  A member must be selected first.
+  */
+
   if (!participantToken) {
 
-    showJoinBox();
-
     toast(
-      "Join the trip first."
+      "Please select your name first."
     );
 
+    showMemberSelector();
+
     return;
+
   }
 
 
@@ -894,6 +1175,7 @@ async function addExpense() {
     );
 
     return;
+
   }
 
 
@@ -907,6 +1189,7 @@ async function addExpense() {
     );
 
     return;
+
   }
 
 
@@ -917,15 +1200,18 @@ async function addExpense() {
     );
 
     return;
+
   }
 
 
-  $("addExpenseBtn")
-    .disabled =
+  const button =
+    $("addExpenseBtn");
+
+
+  button.disabled =
     true;
 
-  $("addExpenseBtn")
-    .textContent =
+  button.textContent =
     "Adding...";
 
 
@@ -963,22 +1249,26 @@ async function addExpense() {
 
 
     $("expenseDescription")
-      .value = "";
+      .value =
+      "";
 
 
     $("expenseAmount")
-      .value = "";
+      .value =
+      "";
 
 
     await loadTrip();
 
 
     toast(
-      "Expense added."
+      "Expense added ✓"
     );
 
+  }
 
-  } catch (error) {
+
+  catch (error) {
 
     console.error(error);
 
@@ -989,20 +1279,21 @@ async function addExpense() {
   }
 
 
-  $("addExpenseBtn")
-    .disabled =
+  button.disabled =
     false;
 
-  $("addExpenseBtn")
-    .textContent =
+  button.textContent =
     "Add Expense";
 
 }
 
 
-/* =====================================================
-   EXPENSE LIST
-===================================================== */
+
+/*
+=====================================================
+EXPENSES
+=====================================================
+*/
 
 function renderExpenses() {
 
@@ -1016,14 +1307,42 @@ function renderExpenses() {
 
   if (!expenses.length) {
 
-    container.innerHTML =
-      `
-        <p class="small">
-          No expenses yet.
-        </p>
-      `;
+    container.innerHTML = `
+
+      <div
+        class="expense"
+        style="text-align:center;padding:25px;"
+      >
+
+        <div style="font-size:28px;">
+          🧾
+        </div>
+
+        <div
+          style="
+            margin-top:8px;
+            font-weight:700;
+          "
+        >
+          No expenses yet
+        </div>
+
+        <div
+          style="
+            margin-top:4px;
+            color:#737887;
+            font-size:12px;
+          "
+        >
+          Add your first trip expense.
+        </div>
+
+      </div>
+
+    `;
 
     return;
+
   }
 
 
@@ -1033,16 +1352,20 @@ function renderExpenses() {
       const payer =
         people.find(
           person =>
-            person.id ===
-            expense.paid_by
+            String(person.id) ===
+            String(expense.paid_by)
         );
 
 
       const creator =
         people.find(
           person =>
-            person.participant_id ===
-            expense.created_by_participant_id
+            String(
+              person.participant_id
+            ) ===
+            String(
+              expense.created_by_participant_id
+            )
         );
 
 
@@ -1056,10 +1379,17 @@ function renderExpenses() {
         "expense";
 
 
+      /*
+      Only the person who added
+      the expense sees Delete.
+      */
+
       const isMine =
         participantId &&
-        expense.created_by_participant_id ===
-        participantId;
+        String(
+          expense.created_by_participant_id
+        ) ===
+        String(participantId);
 
 
       let deleteButton =
@@ -1081,7 +1411,9 @@ function renderExpenses() {
               deleteOwnExpense('${expense.id}')
             "
           >
+
             Delete
+
           </button>
 
         `;
@@ -1096,10 +1428,13 @@ function renderExpenses() {
           <div>
 
             <div class="expense-name">
+
               ${escapeHtml(
                 expense.description
               )}
+
             </div>
+
 
             <div class="expense-meta">
 
@@ -1148,9 +1483,12 @@ function renderExpenses() {
 }
 
 
-/* =====================================================
-   DELETE EXPENSE
-===================================================== */
+
+/*
+=====================================================
+DELETE MY EXPENSE
+=====================================================
+*/
 
 async function deleteOwnExpense(
   expenseId
@@ -1163,6 +1501,7 @@ async function deleteOwnExpense(
     );
 
     return;
+
   }
 
 
@@ -1173,6 +1512,7 @@ async function deleteOwnExpense(
   ) {
 
     return;
+
   }
 
 
@@ -1196,8 +1536,8 @@ async function deleteOwnExpense(
 
           })
 
-        }
-      );
+      }
+    );
 
 
     await loadTrip();
@@ -1207,8 +1547,10 @@ async function deleteOwnExpense(
       "Expense deleted."
     );
 
+  }
 
-  } catch (error) {
+
+  catch (error) {
 
     console.error(error);
 
@@ -1221,9 +1563,12 @@ async function deleteOwnExpense(
 }
 
 
-/* =====================================================
-   BALANCES
-===================================================== */
+
+/*
+=====================================================
+BALANCES
+=====================================================
+*/
 
 function renderBalances() {
 
@@ -1317,7 +1662,10 @@ function renderBalances() {
 
         `;
 
-      } else if (
+      }
+
+
+      else if (
         balance < -0.005
       ) {
 
@@ -1331,7 +1679,10 @@ function renderBalances() {
 
         `;
 
-      } else {
+      }
+
+
+      else {
 
         status = `
 
@@ -1409,9 +1760,12 @@ function renderBalances() {
 }
 
 
-/* =====================================================
-   SHARE
-===================================================== */
+
+/*
+=====================================================
+SHARE MASTER LINK
+=====================================================
+*/
 
 async function shareTrip() {
 
@@ -1438,7 +1792,10 @@ async function shareTrip() {
 
       });
 
-    } else {
+    }
+
+
+    else {
 
       await navigator.clipboard
         .writeText(url);
@@ -1450,7 +1807,10 @@ async function shareTrip() {
 
     }
 
-  } catch (error) {
+  }
+
+
+  catch (error) {
 
     if (
       error.name !==
@@ -1468,9 +1828,12 @@ async function shareTrip() {
 }
 
 
-/* =====================================================
-   BUTTON EVENTS
-===================================================== */
+
+/*
+=====================================================
+BUTTONS
+=====================================================
+*/
 
 $("addPersonBtn")
   .addEventListener(
@@ -1500,18 +1863,24 @@ $("shareBtn")
   );
 
 
-/* =====================================================
-   INITIAL PERSON FIELDS
-===================================================== */
+
+/*
+=====================================================
+INITIAL PERSON FIELDS
+=====================================================
+*/
 
 createPersonField();
 
 createPersonField();
 
 
-/* =====================================================
-   START APP
-===================================================== */
+
+/*
+=====================================================
+START
+=====================================================
+*/
 
 if (tripId) {
 
@@ -1527,7 +1896,10 @@ if (tripId) {
 
   loadTrip();
 
-} else {
+}
+
+
+else {
 
   showHome();
 
