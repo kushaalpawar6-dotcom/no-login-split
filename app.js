@@ -611,6 +611,10 @@ function renderTrip() {
 
   renderBalances();
 
+
+  // NEW: calculate and display who owes whom
+  renderWhoOwesWhom();
+
 }
 
 
@@ -2022,6 +2026,541 @@ function renderBalances() {
     );
 
   }
+
+}
+
+
+/* =====================================================
+   WHO OWES WHOM
+===================================================== */
+
+function calculateNetBalances() {
+
+  const net = {};
+
+
+  people.forEach(person => {
+
+    net[person.id] = 0;
+
+  });
+
+
+  expenses.forEach(expense => {
+
+    const amount =
+      Number(expense.amount) || 0;
+
+
+    const payerId =
+      String(expense.paid_by);
+
+
+    if (
+      net[payerId] === undefined
+    ) {
+
+      return;
+
+    }
+
+
+    /*
+      The payer is owed the full amount
+      they actually paid.
+    */
+
+    net[payerId] +=
+      amount;
+
+
+    const ids =
+      expenseParticipants[
+        expense.id
+      ]?.length
+
+        ? expenseParticipants[
+            expense.id
+          ]
+
+        : people.map(
+            person =>
+              person.id
+          );
+
+
+    const validIds =
+      ids.filter(
+        id =>
+          net[id] !== undefined
+      );
+
+
+    if (!validIds.length) {
+
+      return;
+
+    }
+
+
+    /*
+      Everyone selected for this expense
+      owes an equal share.
+    */
+
+    const share =
+      amount /
+      validIds.length;
+
+
+    validIds.forEach(id => {
+
+      net[id] -=
+        share;
+
+    });
+
+  });
+
+
+  return net;
+
+}
+
+
+/*
+  Convert net balances into actual payments.
+
+  Positive balance:
+    person should RECEIVE money.
+
+  Negative balance:
+    person needs to PAY money.
+*/
+
+function calculateSettlements() {
+
+  const net =
+    calculateNetBalances();
+
+
+  const creditors = [];
+  const debtors = [];
+
+
+  people.forEach(person => {
+
+    /*
+      Work in paise to avoid floating-point
+      errors such as 399.999999999.
+    */
+
+    const balance =
+      Math.round(
+        (net[person.id] || 0) * 100
+      );
+
+
+    if (balance > 0) {
+
+      creditors.push({
+
+        id:
+          person.id,
+
+        name:
+          person.name,
+
+        amount:
+          balance
+
+      });
+
+    }
+
+
+    else if (balance < 0) {
+
+      debtors.push({
+
+        id:
+          person.id,
+
+        name:
+          person.name,
+
+        amount:
+          Math.abs(balance)
+
+      });
+
+    }
+
+  });
+
+
+  /*
+    Largest balances first.
+    This generally reduces the number
+    of transactions required.
+  */
+
+  creditors.sort(
+    (a, b) =>
+      b.amount -
+      a.amount
+  );
+
+
+  debtors.sort(
+    (a, b) =>
+      b.amount -
+      a.amount
+  );
+
+
+  const settlements = [];
+
+
+  let creditorIndex = 0;
+
+  let debtorIndex = 0;
+
+
+  while (
+    creditorIndex <
+      creditors.length &&
+
+    debtorIndex <
+      debtors.length
+  ) {
+
+    const creditor =
+      creditors[
+        creditorIndex
+      ];
+
+
+    const debtor =
+      debtors[
+        debtorIndex
+      ];
+
+
+    const amount =
+      Math.min(
+        creditor.amount,
+        debtor.amount
+      );
+
+
+    if (amount > 0) {
+
+      settlements.push({
+
+        from:
+          debtor,
+
+        to:
+          creditor,
+
+        amount:
+          amount / 100
+
+      });
+
+    }
+
+
+    creditor.amount -=
+      amount;
+
+
+    debtor.amount -=
+      amount;
+
+
+    if (
+      creditor.amount ===
+      0
+    ) {
+
+      creditorIndex++;
+
+    }
+
+
+    if (
+      debtor.amount ===
+      0
+    ) {
+
+      debtorIndex++;
+
+    }
+
+  }
+
+
+  return settlements;
+
+}
+
+
+/*
+  Render the "Who owes whom?" card.
+
+  The card is created automatically, so
+  you do NOT need to change your HTML.
+*/
+
+function renderWhoOwesWhom() {
+
+  let card =
+    $("whoOwesWhomCard");
+
+
+  /*
+    Create the card only once.
+  */
+
+  if (!card) {
+
+    card =
+      document.createElement(
+        "div"
+      );
+
+
+    card.id =
+      "whoOwesWhomCard";
+
+
+    card.className =
+      "card";
+
+
+    card.style.marginTop =
+      "16px";
+
+
+    const balancesCard =
+      document.querySelector(
+        ".balances-card"
+      );
+
+
+    if (
+      balancesCard &&
+      balancesCard.parentNode
+    ) {
+
+      balancesCard.parentNode
+        .insertBefore(
+          card,
+          balancesCard.nextSibling
+        );
+
+    }
+
+
+    else {
+
+      $("tripScreen")
+        .appendChild(
+          card
+        );
+
+    }
+
+  }
+
+
+  const settlements =
+    calculateSettlements();
+
+
+  card.innerHTML = `
+
+    <div
+      class="section-title"
+      style="
+        margin-bottom:14px;
+      "
+    >
+
+      <div
+        class="section-icon balance-icon"
+      >
+        ↔️
+      </div>
+
+
+      <div>
+
+        <h2>
+          Who owes whom?
+        </h2>
+
+        <p>
+          Simple payments to settle the trip.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div
+      id="settlementsList"
+    ></div>
+
+  `;
+
+
+  const list =
+    $("settlementsList");
+
+
+  /*
+    No payments are necessary.
+  */
+
+  if (
+    !settlements.length
+  ) {
+
+    list.innerHTML = `
+
+      <div
+        style="
+          padding:16px;
+          border-radius:14px;
+          background:#eaf8f0;
+          color:#16864b;
+          font-weight:800;
+          text-align:center;
+        "
+      >
+
+        Everyone is settled up 🎉
+
+      </div>
+
+    `;
+
+
+    return;
+
+  }
+
+
+  /*
+    Render every required payment.
+  */
+
+  settlements.forEach(
+    settlement => {
+
+      const row =
+        document.createElement(
+          "div"
+        );
+
+
+      row.className =
+        "balance";
+
+
+      row.style.background =
+        "#fafbfe";
+
+
+      row.innerHTML = `
+
+        <div
+          style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+          "
+        >
+
+          <div
+            style="
+              min-width:0;
+            "
+          >
+
+            <div
+              style="
+                font-size:13px;
+                font-weight:800;
+                line-height:1.4;
+              "
+            >
+
+              ${escapeHtml(
+                settlement.from.name
+              )}
+
+              <span
+                style="
+                  color:#737887;
+                  font-weight:600;
+                "
+              >
+                owes
+              </span>
+
+              ${escapeHtml(
+                settlement.to.name
+              )}
+
+            </div>
+
+
+            <div
+              style="
+                margin-top:4px;
+                color:#737887;
+                font-size:11px;
+              "
+            >
+
+              Pay
+              ${escapeHtml(
+                settlement.to.name
+              )}
+
+            </div>
+
+          </div>
+
+
+          <div
+            class="negative"
+            style="
+              white-space:nowrap;
+            "
+          >
+
+            ₹${settlement.amount.toFixed(2)}
+
+          </div>
+
+        </div>
+
+      `;
+
+
+      list.appendChild(
+        row
+      );
+
+    }
+  );
 
 }
 
