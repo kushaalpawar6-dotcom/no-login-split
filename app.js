@@ -1,7 +1,11 @@
-const SUPABASE_URL = window.SUPABASE_URL;
-const SUPABASE_KEY = window.SUPABASE_KEY;
+const SUPABASE_URL =
+  window.SUPABASE_URL;
 
-const tripId = new URLSearchParams(location.search).get("trip");
+const SUPABASE_KEY =
+  window.SUPABASE_KEY;
+
+const tripId =
+  new URLSearchParams(window.location.search).get("trip");
 
 let trip = null;
 let people = [];
@@ -17,19 +21,18 @@ let participantId =
     ? localStorage.getItem(`nls_participant_id_${tripId}`)
     : null;
 
-let ownerToken =
-  tripId
-    ? localStorage.getItem(`nls_owner_${tripId}`)
-    : null;
-
 
 /* =====================================================
    HELPERS
 ===================================================== */
 
-const $ = id => document.getElementById(id);
+function $(id) {
+  return document.getElementById(id);
+}
 
-function showToast(message) {
+
+function toast(message) {
+
   const box = $("toast");
 
   if (!box) {
@@ -45,7 +48,9 @@ function showToast(message) {
   }, 3000);
 }
 
+
 function escapeHtml(value) {
+
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -55,7 +60,11 @@ function escapeHtml(value) {
 }
 
 
-async function supabase(path, options = {}) {
+/* =====================================================
+   SUPABASE API
+===================================================== */
+
+async function api(path, options = {}) {
 
   const response = await fetch(
     `${SUPABASE_URL}${path}`,
@@ -64,22 +73,39 @@ async function supabase(path, options = {}) {
 
       headers: {
         apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        "Content-Type": "application/json",
+
+        Authorization:
+          `Bearer ${SUPABASE_KEY}`,
+
+        "Content-Type":
+          "application/json",
+
         ...(options.headers || {})
       }
     }
   );
 
-  const text = await response.text();
+
+  const text =
+    await response.text();
+
 
   let data = null;
 
+
   try {
-    data = text ? JSON.parse(text) : null;
+
+    data =
+      text
+        ? JSON.parse(text)
+        : null;
+
   } catch {
+
     data = text;
+
   }
+
 
   if (!response.ok) {
 
@@ -92,41 +118,375 @@ async function supabase(path, options = {}) {
 
   }
 
+
   return data;
 }
 
 
 /* =====================================================
-   HOME
+   PEOPLE
 ===================================================== */
 
-function showHome() {
+let personCounter = 0;
 
-  $("homeScreen").classList.remove("hidden");
 
-  $("tripScreen").classList.add("hidden");
+function createPersonField() {
+
+  personCounter++;
+
+
+  const container =
+    $("peopleInputs");
+
+
+  const row =
+    document.createElement("div");
+
+  row.className =
+    "person-row";
+
+
+  const input =
+    document.createElement("input");
+
+
+  input.type = "text";
+
+  input.className =
+    "person-input";
+
+
+  input.placeholder =
+    `Person ${personCounter}`;
+
+
+  /*
+    Safari autofill protection
+  */
+
+  input.autocomplete =
+    "new-password";
+
+  input.autocapitalize =
+    "words";
+
+  input.autocorrect =
+    "off";
+
+  input.spellcheck =
+    false;
+
+
+  input.name =
+    `person_${Date.now()}_${personCounter}`;
+
+
+  /*
+    VERY IMPORTANT:
+    New field is always blank.
+  */
+
+  input.defaultValue = "";
+
+  input.value = "";
+
+
+  const remove =
+    document.createElement("button");
+
+
+  remove.type = "button";
+
+  remove.className =
+    "remove-person";
+
+  remove.textContent = "×";
+
+
+  remove.onclick =
+    function () {
+
+      row.remove();
+
+      renumberPeople();
+
+    };
+
+
+  row.appendChild(input);
+
+  row.appendChild(remove);
+
+  container.appendChild(row);
+
+
+  /*
+    Safari sometimes restores input values
+    after the element is added.
+  */
+
+  setTimeout(() => {
+
+    input.value = "";
+
+  }, 0);
+
+}
+
+
+function renumberPeople() {
+
+  const inputs =
+    document.querySelectorAll(
+      "#peopleInputs .person-input"
+    );
+
+
+  inputs.forEach(
+    (input, index) => {
+
+      input.placeholder =
+        `Person ${index + 1}`;
+
+    }
+  );
+
+
+  personCounter =
+    inputs.length;
+
+}
+
+
+function addPerson() {
+
+  createPersonField();
 
 }
 
 
 /* =====================================================
-   START
+   CREATE TRIP
 ===================================================== */
 
-async function start() {
+async function createTrip() {
 
-  if (!tripId) {
+  const tripName =
+    $("tripName")
+      .value
+      .trim();
 
-    showHome();
+
+  const inputs =
+    Array.from(
+      document.querySelectorAll(
+        "#peopleInputs .person-input"
+      )
+    );
+
+
+  /*
+    Read each input separately.
+  */
+
+  const names =
+    inputs.map(
+      input =>
+        input.value.trim()
+    );
+
+
+  const validNames =
+    names.filter(
+      name =>
+        name.length > 0
+    );
+
+
+  if (!tripName) {
+
+    toast(
+      "Enter a trip name."
+    );
 
     return;
   }
 
-  $("homeScreen").classList.add("hidden");
 
-  $("tripScreen").classList.remove("hidden");
+  if (validNames.length < 2) {
 
-  await loadTrip();
+    toast(
+      "Add at least 2 people."
+    );
+
+    return;
+  }
+
+
+  /*
+    Check duplicate names.
+  */
+
+  const lowerNames =
+    validNames.map(
+      name =>
+        name.toLowerCase()
+    );
+
+
+  if (
+    new Set(lowerNames).size !==
+    validNames.length
+  ) {
+
+    toast(
+      "Each person's name should be different."
+    );
+
+    return;
+  }
+
+
+  $("createTripBtn").disabled =
+    true;
+
+  $("createTripBtn").textContent =
+    "Creating...";
+
+
+  try {
+
+    const result =
+      await api(
+        "/rest/v1/rpc/create_trip",
+        {
+
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+
+              p_name:
+                tripName,
+
+              p_people:
+                validNames
+
+            })
+
+        }
+      );
+
+
+    const data =
+      Array.isArray(result)
+        ? result[0]
+        : result;
+
+
+    if (!data?.trip_id) {
+
+      throw new Error(
+        "Trip creation failed."
+      );
+
+    }
+
+
+    const newTripId =
+      data.trip_id;
+
+
+    /*
+      Join as first person.
+    */
+
+    const joined =
+      await api(
+        "/rest/v1/rpc/join_trip",
+        {
+
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+
+              p_trip_id:
+                newTripId,
+
+              p_name:
+                validNames[0]
+
+            })
+
+        }
+      );
+
+
+    const participant =
+      Array.isArray(joined)
+        ? joined[0]
+        : joined;
+
+
+    if (
+      !participant?.participant_token
+    ) {
+
+      throw new Error(
+        "Could not create participant permission."
+      );
+
+    }
+
+
+    participantToken =
+      participant.participant_token;
+
+
+    participantId =
+      participant.participant_id;
+
+
+    localStorage.setItem(
+      `nls_participant_${newTripId}`,
+      participantToken
+    );
+
+
+    localStorage.setItem(
+      `nls_participant_id_${newTripId}`,
+      participantId
+    );
+
+
+    /*
+      ONE MASTER LINK.
+    */
+
+    window.location.href =
+      `${window.location.pathname}?trip=${newTripId}`;
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast(
+      error.message
+    );
+
+  }
+
+
+  $("createTripBtn").disabled =
+    false;
+
+  $("createTripBtn").textContent =
+    "Create Trip";
+
 }
 
 
@@ -138,39 +498,53 @@ async function loadTrip() {
 
   try {
 
-    const trips = await supabase(
-      `/rest/v1/trip_public?id=eq.${encodeURIComponent(tripId)}&select=id,name,created_at`
-    );
+    const trips =
+      await api(
+        `/rest/v1/trip_public?id=eq.${encodeURIComponent(tripId)}&select=id,name,created_at`
+      );
 
-    if (!trips.length) {
 
-      showToast("Trip not found.");
+    if (
+      !trips ||
+      trips.length === 0
+    ) {
+
+      toast(
+        "Trip not found."
+      );
 
       showHome();
 
       return;
     }
 
-    trip = trips[0];
+
+    trip =
+      trips[0];
 
 
-    people = await supabase(
-      `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
-    );
+    people =
+      await api(
+        `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
+      );
 
 
-    expenses = await supabase(
-      `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,paid_by,created_by_participant_id,created_at&order=created_at.desc`
-    );
+    expenses =
+      await api(
+        `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,paid_by,created_by_participant_id,created_at&order=created_at.desc`
+      );
 
 
-    render();
+    renderTrip();
+
 
   } catch (error) {
 
     console.error(error);
 
-    showToast(error.message);
+    toast(
+      error.message
+    );
 
   }
 
@@ -178,87 +552,129 @@ async function loadTrip() {
 
 
 /* =====================================================
-   RENDER
+   SCREEN
 ===================================================== */
 
-function render() {
+function showHome() {
 
-  $("tripTitle").textContent = trip.name;
+  $("homeScreen")
+    .classList
+    .remove("hidden");
 
-  $("tripLink").textContent =
+
+  $("tripScreen")
+    .classList
+    .add("hidden");
+
+}
+
+
+function showTrip() {
+
+  $("homeScreen")
+    .classList
+    .add("hidden");
+
+
+  $("tripScreen")
+    .classList
+    .remove("hidden");
+
+}
+
+
+/* =====================================================
+   RENDER TRIP
+===================================================== */
+
+function renderTrip() {
+
+  showTrip();
+
+
+  $("tripTitle")
+    .textContent =
+    trip.name;
+
+
+  $("tripLink")
+    .textContent =
     window.location.href;
 
 
-  populatePaidBy();
+  populatePayers();
 
   renderExpenses();
 
   renderBalances();
 
-
-  if (!participantToken && !ownerToken) {
-
-    showJoinBox();
-
-  } else {
-
-    hideJoinBox();
-
-  }
-
 }
 
 
 /* =====================================================
-   JOIN BOX
+   JOIN TRIP
 ===================================================== */
 
 function showJoinBox() {
 
-  if ($("joinBox")) return;
+  if ($("joinBox")) {
+    return;
+  }
 
 
   const card =
     document.createElement("div");
 
-  card.className = "card";
 
-  card.id = "joinBox";
+  card.id =
+    "joinBox";
+
+  card.className =
+    "card";
 
 
   card.innerHTML = `
 
-    <h2>Join this trip</h2>
+    <h2>
+      Join this trip
+    </h2>
 
     <p class="small">
-      Enter your name to join this trip.
-      No account or password is required.
+      Enter your name to join the trip.
     </p>
 
-    <div style="height:12px"></div>
-
-    <label>Your name</label>
+    <label>
+      Your name
+    </label>
 
     <input
       id="joinName"
-      placeholder="e.g. Rahul"
+      type="text"
+      placeholder="e.g. Aman"
+      autocomplete="off"
     >
 
-    <button id="joinBtn">
+    <button
+      id="joinBtn"
+      type="button"
+    >
       Join Trip
     </button>
 
   `;
 
 
-  $("tripScreen").insertBefore(
-    card,
-    $("tripScreen").firstChild
-  );
+  $("tripScreen")
+    .insertBefore(
+      card,
+      $("tripScreen").firstChild
+    );
 
 
-  $("joinBtn").onclick =
+  $("joinBtn")
+    .onclick =
     joinTrip;
+
 }
 
 
@@ -266,6 +682,7 @@ function hideJoinBox() {
 
   const box =
     $("joinBox");
+
 
   if (box) {
     box.remove();
@@ -275,24 +692,29 @@ function hideJoinBox() {
 
 
 /* =====================================================
-   JOIN TRIP
+   JOIN
 ===================================================== */
 
 async function joinTrip() {
 
   const name =
-    $("joinName").value.trim();
+    $("joinName")
+      .value
+      .trim();
 
 
   if (!name) {
 
-    showToast("Enter your name.");
+    toast(
+      "Enter your name."
+    );
 
     return;
   }
 
 
-  $("joinBtn").disabled = true;
+  $("joinBtn").disabled =
+    true;
 
   $("joinBtn").textContent =
     "Joining...";
@@ -301,40 +723,51 @@ async function joinTrip() {
   try {
 
     const result =
-      await supabase(
+      await api(
         "/rest/v1/rpc/join_trip",
         {
-          method: "POST",
 
-          body: JSON.stringify({
-            p_trip_id: tripId,
-            p_name: name
-          })
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+
+              p_trip_id:
+                tripId,
+
+              p_name:
+                name
+
+            })
+
         }
       );
 
 
-    const data =
+    const participant =
       Array.isArray(result)
         ? result[0]
         : result;
 
 
-    if (!data?.participant_token) {
+    if (
+      !participant?.participant_token
+    ) {
 
       throw new Error(
-        "Could not create participant permission."
+        "Could not join trip."
       );
 
     }
 
 
     participantToken =
-      data.participant_token;
+      participant.participant_token;
 
 
     participantId =
-      data.participant_id;
+      participant.participant_id;
 
 
     localStorage.setItem(
@@ -349,8 +782,8 @@ async function joinTrip() {
     );
 
 
-    showToast(
-      `Welcome, ${data.name}!`
+    toast(
+      `Welcome, ${participant.name}!`
     );
 
 
@@ -361,9 +794,13 @@ async function joinTrip() {
 
     console.error(error);
 
-    showToast(error.message);
+    toast(
+      error.message
+    );
 
-    $("joinBtn").disabled = false;
+
+    $("joinBtn").disabled =
+      false;
 
     $("joinBtn").textContent =
       "Join Trip";
@@ -374,31 +811,42 @@ async function joinTrip() {
 
 
 /* =====================================================
-   PEOPLE
+   PAYERS
 ===================================================== */
 
-function populatePaidBy() {
+function populatePayers() {
 
   const select =
     $("expensePaidBy");
 
-  select.innerHTML = "";
+
+  select.innerHTML =
+    "";
 
 
-  people.forEach(person => {
+  people.forEach(
+    person => {
 
-    const option =
-      document.createElement("option");
+      const option =
+        document.createElement(
+          "option"
+        );
 
-    option.value =
-      person.id;
 
-    option.textContent =
-      person.name;
+      option.value =
+        person.id;
 
-    select.appendChild(option);
 
-  });
+      option.textContent =
+        person.name;
+
+
+      select.appendChild(
+        option
+      );
+
+    }
+  );
 
 }
 
@@ -411,7 +859,11 @@ async function addExpense() {
 
   if (!participantToken) {
 
-    toastJoinMessage();
+    showJoinBox();
+
+    toast(
+      "Join the trip first."
+    );
 
     return;
   }
@@ -425,27 +877,32 @@ async function addExpense() {
 
   const amount =
     Number(
-      $("expenseAmount").value
+      $("expenseAmount")
+        .value
     );
 
 
   const paidBy =
-    $("expensePaidBy").value;
+    $("expensePaidBy")
+      .value;
 
 
   if (!description) {
 
-    showToast(
-      "Enter an expense description."
+    toast(
+      "Enter a description."
     );
 
     return;
   }
 
 
-  if (!amount || amount <= 0) {
+  if (
+    !amount ||
+    amount <= 0
+  ) {
 
-    showToast(
+    toast(
       "Enter a valid amount."
     );
 
@@ -455,7 +912,7 @@ async function addExpense() {
 
   if (!paidBy) {
 
-    showToast(
+    toast(
       "Select who paid."
     );
 
@@ -463,44 +920,51 @@ async function addExpense() {
   }
 
 
-  $("addExpenseBtn").disabled =
+  $("addExpenseBtn")
+    .disabled =
     true;
 
-  $("addExpenseBtn").textContent =
+  $("addExpenseBtn")
+    .textContent =
     "Adding...";
 
 
   try {
 
-    await supabase(
+    await api(
       "/rest/v1/rpc/add_expense_secure",
       {
-        method: "POST",
 
-        body: JSON.stringify({
+        method:
+          "POST",
 
-          p_trip_id:
-            tripId,
+        body:
+          JSON.stringify({
 
-          p_participant_token:
-            participantToken,
+            p_trip_id:
+              tripId,
 
-          p_description:
-            description,
+            p_participant_token:
+              participantToken,
 
-          p_amount:
-            amount,
+            p_description:
+              description,
 
-          p_paid_by:
-            paidBy
+            p_amount:
+              amount,
 
-        })
+            p_paid_by:
+              paidBy
+
+          })
+
       }
     );
 
 
     $("expenseDescription")
       .value = "";
+
 
     $("expenseAmount")
       .value = "";
@@ -509,7 +973,7 @@ async function addExpense() {
     await loadTrip();
 
 
-    showToast(
+    toast(
       "Expense added."
     );
 
@@ -518,33 +982,26 @@ async function addExpense() {
 
     console.error(error);
 
-    showToast(
+    toast(
       error.message
     );
 
   }
 
 
-  $("addExpenseBtn").disabled =
+  $("addExpenseBtn")
+    .disabled =
     false;
 
-  $("addExpenseBtn").textContent =
+  $("addExpenseBtn")
+    .textContent =
     "Add Expense";
 
 }
 
 
-function toastJoinMessage() {
-
-  showToast(
-    "Join the trip before adding an expense."
-  );
-
-}
-
-
 /* =====================================================
-   EXPENSES
+   EXPENSE LIST
 ===================================================== */
 
 function renderExpenses() {
@@ -552,149 +1009,147 @@ function renderExpenses() {
   const container =
     $("expensesList");
 
-  container.innerHTML = "";
+
+  container.innerHTML =
+    "";
 
 
   if (!expenses.length) {
 
     container.innerHTML =
-      `<p class="small">
-        No expenses yet.
-      </p>`;
+      `
+        <p class="small">
+          No expenses yet.
+        </p>
+      `;
 
     return;
   }
 
 
-  expenses.forEach(expense => {
+  expenses.forEach(
+    expense => {
 
-    const payer =
-      people.find(
-        p =>
-          p.id ===
-          expense.paid_by
-      );
-
-
-    const creator =
-      people.find(
-        p =>
-          p.participant_id ===
-          expense.created_by_participant_id
-      );
+      const payer =
+        people.find(
+          person =>
+            person.id ===
+            expense.paid_by
+        );
 
 
-    const item =
-      document.createElement("div");
-
-    item.className =
-      "expense";
-
-
-    let deleteButton = "";
+      const creator =
+        people.find(
+          person =>
+            person.participant_id ===
+            expense.created_by_participant_id
+        );
 
 
-    /*
-      A participant can delete only
-      an expense created by themselves.
-    */
+      const item =
+        document.createElement(
+          "div"
+        );
 
-    const isMine =
-      participantId &&
-      expense.created_by_participant_id ===
+
+      item.className =
+        "expense";
+
+
+      const isMine =
+        participantId &&
+        expense.created_by_participant_id ===
         participantId;
 
 
-    if (isMine) {
+      let deleteButton =
+        "";
 
-      deleteButton = `
 
-        <button
+      if (isMine) {
 
-          class="danger"
+        deleteButton = `
 
-          style="
-            margin-top:10px;
-            width:auto;
-            padding:8px 12px
-          "
+          <button
+            class="danger"
+            style="
+              width:auto;
+              padding:8px 12px;
+              margin-top:10px;
+            "
+            onclick="
+              deleteOwnExpense('${expense.id}')
+            "
+          >
+            Delete
+          </button>
 
-          onclick="
-            deleteOwnExpense('${expense.id}')
-          "
+        `;
 
-        >
+      }
 
-          Delete
 
-        </button>
+      item.innerHTML = `
+
+        <div class="expense-top">
+
+          <div>
+
+            <div class="expense-name">
+              ${escapeHtml(
+                expense.description
+              )}
+            </div>
+
+            <div class="expense-meta">
+
+              Paid by
+              ${escapeHtml(
+                payer?.name ||
+                "Unknown"
+              )}
+
+              ${
+                creator
+                  ? ` • Added by ${escapeHtml(
+                      creator.name
+                    )}`
+                  : ""
+              }
+
+            </div>
+
+          </div>
+
+
+          <div class="expense-amount">
+
+            ₹${Number(
+              expense.amount
+            ).toFixed(2)}
+
+          </div>
+
+        </div>
+
+
+        ${deleteButton}
 
       `;
 
+
+      container.appendChild(
+        item
+      );
+
     }
-
-
-    item.innerHTML = `
-
-      <div class="expense-top">
-
-        <div>
-
-          <div class="expense-name">
-
-            ${escapeHtml(
-              expense.description
-            )}
-
-          </div>
-
-
-          <div class="expense-meta">
-
-            Paid by
-            ${escapeHtml(
-              payer?.name ||
-              "Unknown"
-            )}
-
-            ${
-              creator
-                ? ` • Added by ${escapeHtml(
-                    creator.name
-                  )}`
-                : ""
-            }
-
-          </div>
-
-        </div>
-
-
-        <div class="expense-amount">
-
-          ₹${Number(
-            expense.amount
-          ).toFixed(2)}
-
-        </div>
-
-      </div>
-
-
-      ${deleteButton}
-
-    `;
-
-
-    container.appendChild(item);
-
-  });
+  );
 
 }
 
 
 /* =====================================================
-   DELETE OWN EXPENSE
+   DELETE EXPENSE
 ===================================================== */
 
 async function deleteOwnExpense(
@@ -703,7 +1158,7 @@ async function deleteOwnExpense(
 
   if (!participantToken) {
 
-    showToast(
+    toast(
       "Permission required."
     );
 
@@ -723,28 +1178,32 @@ async function deleteOwnExpense(
 
   try {
 
-    await supabase(
+    await api(
       "/rest/v1/rpc/delete_my_expense",
       {
-        method: "POST",
 
-        body: JSON.stringify({
+        method:
+          "POST",
 
-          p_expense_id:
-            expenseId,
+        body:
+          JSON.stringify({
 
-          p_participant_token:
-            participantToken
+            p_expense_id:
+              expenseId,
 
-        })
-      }
-    );
+            p_participant_token:
+              participantToken
+
+          })
+
+        }
+      );
 
 
     await loadTrip();
 
 
-    showToast(
+    toast(
       "Expense deleted."
     );
 
@@ -753,7 +1212,7 @@ async function deleteOwnExpense(
 
     console.error(error);
 
-    showToast(
+    toast(
       error.message
     );
 
@@ -771,7 +1230,9 @@ function renderBalances() {
   const container =
     $("balancesList");
 
-  container.innerHTML = "";
+
+  container.innerHTML =
+    "";
 
 
   if (!people.length) {
@@ -781,7 +1242,10 @@ function renderBalances() {
 
   const total =
     expenses.reduce(
-      (sum, expense) =>
+      (
+        sum,
+        expense
+      ) =>
         sum +
         Number(
           expense.amount
@@ -798,128 +1262,134 @@ function renderBalances() {
   const paid = {};
 
 
-  people.forEach(person => {
+  people.forEach(
+    person => {
 
-    paid[person.id] =
-      0;
+      paid[person.id] =
+        0;
 
-  });
+    }
+  );
 
 
-  expenses.forEach(expense => {
+  expenses.forEach(
+    expense => {
 
-    if (
-      paid[
-        expense.paid_by
-      ] !== undefined
-    ) {
+      if (
+        paid[
+          expense.paid_by
+        ] !== undefined
+      ) {
 
-      paid[
-        expense.paid_by
-      ] +=
-        Number(
-          expense.amount
+        paid[
+          expense.paid_by
+        ] +=
+          Number(
+            expense.amount
+          );
+
+      }
+
+    }
+  );
+
+
+  people.forEach(
+    person => {
+
+      const balance =
+        paid[person.id] -
+        share;
+
+
+      let status;
+
+
+      if (
+        balance > 0.005
+      ) {
+
+        status = `
+
+          <span class="positive">
+            gets ₹${balance.toFixed(2)}
+          </span>
+
+        `;
+
+      } else if (
+        balance < -0.005
+      ) {
+
+        status = `
+
+          <span class="negative">
+            owes ₹${Math.abs(
+              balance
+            ).toFixed(2)}
+          </span>
+
+        `;
+
+      } else {
+
+        status = `
+
+          <span>
+            settled
+          </span>
+
+        `;
+
+      }
+
+
+      const row =
+        document.createElement(
+          "div"
         );
 
-    }
 
-  });
-
-
-  people.forEach(person => {
-
-    const balance =
-      paid[person.id] -
-      share;
+      row.className =
+        "balance";
 
 
-    const row =
-      document.createElement("div");
+      row.innerHTML = `
 
-    row.className =
-      "balance";
+        <div class="balance-row">
 
+          <strong>
+            ${escapeHtml(
+              person.name
+            )}
+          </strong>
 
-    let status = "";
+          ${status}
 
-
-    if (balance > 0.005) {
-
-      status = `
-
-        <span class="positive">
-
-          gets
-          ₹${balance.toFixed(2)}
-
-        </span>
+        </div>
 
       `;
 
-    } else if (
-      balance < -0.005
-    ) {
 
-      status = `
-
-        <span class="negative">
-
-          owes
-          ₹${Math.abs(
-            balance
-          ).toFixed(2)}
-
-        </span>
-
-      `;
-
-    } else {
-
-      status = `
-
-        <span>
-          settled
-        </span>
-
-      `;
+      container.appendChild(
+        row
+      );
 
     }
-
-
-    row.innerHTML = `
-
-      <div class="balance-row">
-
-        <strong>
-
-          ${escapeHtml(
-            person.name
-          )}
-
-        </strong>
-
-
-        ${status}
-
-      </div>
-
-    `;
-
-
-    container.appendChild(
-      row
-    );
-
-  });
+  );
 
 
   if (total > 0) {
 
     const summary =
-      document.createElement("p");
+      document.createElement(
+        "p"
+      );
+
 
     summary.className =
       "small";
+
 
     summary.style.marginTop =
       "12px";
@@ -963,7 +1433,8 @@ async function shareTrip() {
         text:
           "Join our expense split",
 
-        url
+        url:
+          url
 
       });
 
@@ -972,7 +1443,8 @@ async function shareTrip() {
       await navigator.clipboard
         .writeText(url);
 
-      showToast(
+
+      toast(
         "Trip link copied!"
       );
 
@@ -985,272 +1457,13 @@ async function shareTrip() {
       "AbortError"
     ) {
 
-      showToast(
-        "Unable to share."
+      toast(
+        "Unable to share the link."
       );
 
     }
 
   }
-
-}
-
-
-/* =====================================================
-   CREATE PERSON INPUT
-===================================================== */
-
-function addPersonField() {
-
-  const container =
-    $("peopleInputs");
-
-
-  const row =
-    document.createElement("div");
-
-  row.className =
-    "person-row";
-
-
-  row.innerHTML = `
-
-    <input
-
-      class="person-input"
-
-      placeholder="Person's name"
-
-    >
-
-    <button
-
-      class="remove-person"
-
-      type="button"
-
-    >
-
-      ×
-
-    </button>
-
-  `;
-
-
-  row.querySelector(
-    ".remove-person"
-  ).onclick =
-    () => row.remove();
-
-
-  container.appendChild(
-    row
-  );
-
-}
-
-
-/* =====================================================
-   CREATE TRIP
-===================================================== */
-
-async function createTrip() {
-
-  const name =
-    $("tripName")
-      .value
-      .trim();
-
-
-  const names =
-    [
-      ...document.querySelectorAll(
-        ".person-input"
-      )
-    ]
-      .map(
-        input =>
-          input.value.trim()
-      )
-      .filter(Boolean);
-
-
-  if (!name) {
-
-    showToast(
-      "Enter a trip name."
-    );
-
-    return;
-  }
-
-
-  if (names.length < 2) {
-
-    showToast(
-      "Add at least 2 people."
-    );
-
-    return;
-  }
-
-
-  $("createTripBtn").disabled =
-    true;
-
-  $("createTripBtn").textContent =
-    "Creating...";
-
-
-  try {
-
-    /*
-      The database already creates
-      the people here.
-
-      We then create the private
-      participant identity for the
-      FIRST person only.
-
-      The other people will join
-      themselves using the same link.
-    */
-
-    const result =
-      await supabase(
-        "/rest/v1/rpc/create_trip",
-        {
-          method: "POST",
-
-          body: JSON.stringify({
-
-            p_name:
-              name,
-
-            p_people:
-              names
-
-          })
-        }
-      );
-
-
-    const data =
-      Array.isArray(result)
-        ? result[0]
-        : result;
-
-
-    if (
-      !data?.trip_id ||
-      !data?.owner_token
-    ) {
-
-      throw new Error(
-        "Trip creation failed."
-      );
-
-    }
-
-
-    const newTripId =
-      data.trip_id;
-
-
-    /*
-      Save owner permission.
-    */
-
-    localStorage.setItem(
-      `nls_owner_${newTripId}`,
-      data.owner_token
-    );
-
-
-    /*
-      IMPORTANT:
-      Join the FIRST existing person.
-
-      The fixed SQL function sees that
-      the person already exists and attaches
-      the participant identity to it.
-
-      It DOES NOT create a duplicate person.
-    */
-
-    const joined =
-      await supabase(
-        "/rest/v1/rpc/join_trip",
-        {
-          method: "POST",
-
-          body: JSON.stringify({
-
-            p_trip_id:
-              newTripId,
-
-            p_name:
-              names[0]
-
-          })
-        }
-      );
-
-
-    const participant =
-      Array.isArray(joined)
-        ? joined[0]
-        : joined;
-
-
-    if (
-      !participant?.participant_token
-    ) {
-
-      throw new Error(
-        "Could not create owner participant permission."
-      );
-
-    }
-
-
-    localStorage.setItem(
-      `nls_participant_${newTripId}`,
-      participant.participant_token
-    );
-
-
-    localStorage.setItem(
-      `nls_participant_id_${newTripId}`,
-      participant.participant_id
-    );
-
-
-    /*
-      ONE master URL.
-    */
-
-    window.location.href =
-      `${location.pathname}?trip=${newTripId}`;
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    showToast(
-      error.message
-    );
-
-  }
-
-
-  $("createTripBtn").disabled =
-    false;
-
-  $("createTripBtn").textContent =
-    "Create Trip";
 
 }
 
@@ -1260,35 +1473,62 @@ async function createTrip() {
 ===================================================== */
 
 $("addPersonBtn")
-  ?.addEventListener(
+  .addEventListener(
     "click",
-    addPersonField
+    addPerson
   );
 
 
 $("createTripBtn")
-  ?.addEventListener(
+  .addEventListener(
     "click",
     createTrip
   );
 
 
 $("addExpenseBtn")
-  ?.addEventListener(
+  .addEventListener(
     "click",
     addExpense
   );
 
 
 $("shareBtn")
-  ?.addEventListener(
+  .addEventListener(
     "click",
     shareTrip
   );
 
 
 /* =====================================================
+   INITIAL PERSON FIELDS
+===================================================== */
+
+createPersonField();
+
+createPersonField();
+
+
+/* =====================================================
    START APP
 ===================================================== */
 
-start();
+if (tripId) {
+
+  $("homeScreen")
+    .classList
+    .add("hidden");
+
+
+  $("tripScreen")
+    .classList
+    .remove("hidden");
+
+
+  loadTrip();
+
+} else {
+
+  showHome();
+
+}
