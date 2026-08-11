@@ -1,55 +1,35 @@
 const SUPABASE_URL = window.SUPABASE_URL;
 const SUPABASE_KEY = window.SUPABASE_KEY;
 
-const params = new URLSearchParams(location.search);
-const tripId = params.get("trip");
+const tripId = new URLSearchParams(location.search).get("trip");
 
 let trip = null;
 let people = [];
 let expenses = [];
 
 let participantToken =
-  localStorage.getItem(`nls_participant_${tripId}`) || null;
+  tripId
+    ? localStorage.getItem(`nls_participant_${tripId}`)
+    : null;
+
+let participantId =
+  tripId
+    ? localStorage.getItem(`nls_participant_id_${tripId}`)
+    : null;
 
 let ownerToken =
-  localStorage.getItem(`nls_owner_${tripId}`) || null;
+  tripId
+    ? localStorage.getItem(`nls_owner_${tripId}`)
+    : null;
+
+
+/* =====================================================
+   HELPERS
+===================================================== */
 
 const $ = id => document.getElementById(id);
 
-async function api(path, options = {}) {
-  const response = await fetch(`${SUPABASE_URL}${path}`, {
-    ...options,
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
-  });
-
-  const text = await response.text();
-
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data?.message ||
-      data?.hint ||
-      data?.error_description ||
-      "Something went wrong"
-    );
-  }
-
-  return data;
-}
-
-function toast(message) {
+function showToast(message) {
   const box = $("toast");
 
   if (!box) {
@@ -75,55 +55,125 @@ function escapeHtml(value) {
 }
 
 
+async function supabase(path, options = {}) {
+
+  const response = await fetch(
+    `${SUPABASE_URL}${path}`,
+    {
+      ...options,
+
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    }
+  );
+
+  const text = await response.text();
+
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+
+    throw new Error(
+      data?.message ||
+      data?.hint ||
+      data?.error_description ||
+      "Something went wrong"
+    );
+
+  }
+
+  return data;
+}
+
+
 /* =====================================================
-   HOME / TRIP LOADING
+   HOME
+===================================================== */
+
+function showHome() {
+
+  $("homeScreen").classList.remove("hidden");
+
+  $("tripScreen").classList.add("hidden");
+
+}
+
+
+/* =====================================================
+   START
 ===================================================== */
 
 async function start() {
+
   if (!tripId) {
+
     showHome();
+
     return;
   }
 
   $("homeScreen").classList.add("hidden");
+
   $("tripScreen").classList.remove("hidden");
 
   await loadTrip();
 }
 
+
+/* =====================================================
+   LOAD TRIP
+===================================================== */
+
 async function loadTrip() {
+
   try {
-    const trips = await api(
+
+    const trips = await supabase(
       `/rest/v1/trip_public?id=eq.${encodeURIComponent(tripId)}&select=id,name,created_at`
     );
 
-    if (!trips || !trips.length) {
-      toast("Trip not found.");
+    if (!trips.length) {
+
+      showToast("Trip not found.");
+
       showHome();
+
       return;
     }
 
     trip = trips[0];
 
-    people = await api(
+
+    people = await supabase(
       `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
     );
 
-    expenses = await api(
+
+    expenses = await supabase(
       `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,paid_by,created_by_participant_id,created_at&order=created_at.desc`
     );
+
 
     render();
 
   } catch (error) {
-    console.error(error);
-    toast(error.message);
-  }
-}
 
-function showHome() {
-  $("homeScreen").classList.remove("hidden");
-  $("tripScreen").classList.add("hidden");
+    console.error(error);
+
+    showToast(error.message);
+
+  }
+
 }
 
 
@@ -132,54 +182,57 @@ function showHome() {
 ===================================================== */
 
 function render() {
-  $("tripTitle").textContent = trip.name;
-  $("tripLink").textContent = location.href;
 
-  populatePayers();
+  $("tripTitle").textContent = trip.name;
+
+  $("tripLink").textContent =
+    window.location.href;
+
+
+  populatePaidBy();
+
   renderExpenses();
+
   renderBalances();
 
+
   if (!participantToken && !ownerToken) {
+
     showJoinBox();
+
   } else {
+
     hideJoinBox();
+
   }
-}
 
-function populatePayers() {
-  const select = $("expensePaidBy");
-
-  select.innerHTML = "";
-
-  people.forEach(person => {
-    const option = document.createElement("option");
-
-    option.value = person.id;
-    option.textContent = person.name;
-
-    select.appendChild(option);
-  });
 }
 
 
 /* =====================================================
-   JOIN TRIP
+   JOIN BOX
 ===================================================== */
 
 function showJoinBox() {
+
   if ($("joinBox")) return;
 
-  const card = document.createElement("div");
+
+  const card =
+    document.createElement("div");
 
   card.className = "card";
+
   card.id = "joinBox";
 
+
   card.innerHTML = `
+
     <h2>Join this trip</h2>
 
     <p class="small">
-      Choose your name. You don't need an account.
-      Your private permission is saved only on this device.
+      Enter your name to join this trip.
+      No account or password is required.
     </p>
 
     <div style="height:12px"></div>
@@ -194,75 +247,159 @@ function showJoinBox() {
     <button id="joinBtn">
       Join Trip
     </button>
+
   `;
+
 
   $("tripScreen").insertBefore(
     card,
     $("tripScreen").firstChild
   );
 
-  $("joinBtn").onclick = joinTrip;
+
+  $("joinBtn").onclick =
+    joinTrip;
 }
 
+
 function hideJoinBox() {
-  const box = $("joinBox");
+
+  const box =
+    $("joinBox");
 
   if (box) {
     box.remove();
   }
+
 }
 
+
+/* =====================================================
+   JOIN TRIP
+===================================================== */
+
 async function joinTrip() {
-  const name = $("joinName").value.trim();
+
+  const name =
+    $("joinName").value.trim();
+
 
   if (!name) {
-    toast("Enter your name.");
+
+    showToast("Enter your name.");
+
     return;
   }
 
+
   $("joinBtn").disabled = true;
-  $("joinBtn").textContent = "Joining...";
+
+  $("joinBtn").textContent =
+    "Joining...";
+
 
   try {
-    const result = await api(
-      "/rest/v1/rpc/join_trip",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          p_trip_id: tripId,
-          p_name: name
-        })
-      }
-    );
+
+    const result =
+      await supabase(
+        "/rest/v1/rpc/join_trip",
+        {
+          method: "POST",
+
+          body: JSON.stringify({
+            p_trip_id: tripId,
+            p_name: name
+          })
+        }
+      );
+
 
     const data =
       Array.isArray(result)
         ? result[0]
         : result;
 
+
     if (!data?.participant_token) {
-      throw new Error("Could not create participant permission.");
+
+      throw new Error(
+        "Could not create participant permission."
+      );
+
     }
+
 
     participantToken =
       data.participant_token;
+
+
+    participantId =
+      data.participant_id;
+
 
     localStorage.setItem(
       `nls_participant_${tripId}`,
       participantToken
     );
 
-    toast(`Welcome, ${data.name}!`);
+
+    localStorage.setItem(
+      `nls_participant_id_${tripId}`,
+      participantId
+    );
+
+
+    showToast(
+      `Welcome, ${data.name}!`
+    );
+
 
     await loadTrip();
 
+
   } catch (error) {
+
     console.error(error);
-    toast(error.message);
+
+    showToast(error.message);
 
     $("joinBtn").disabled = false;
-    $("joinBtn").textContent = "Join Trip";
+
+    $("joinBtn").textContent =
+      "Join Trip";
+
   }
+
+}
+
+
+/* =====================================================
+   PEOPLE
+===================================================== */
+
+function populatePaidBy() {
+
+  const select =
+    $("expensePaidBy");
+
+  select.innerHTML = "";
+
+
+  people.forEach(person => {
+
+    const option =
+      document.createElement("option");
+
+    option.value =
+      person.id;
+
+    option.textContent =
+      person.name;
+
+    select.appendChild(option);
+
+  });
+
 }
 
 
@@ -272,99 +409,172 @@ async function joinTrip() {
 
 async function addExpense() {
 
-  if (!participantToken && !ownerToken) {
-    toast("Join the trip first.");
+  if (!participantToken) {
+
+    toastJoinMessage();
+
     return;
   }
 
+
   const description =
-    $("expenseDescription").value.trim();
+    $("expenseDescription")
+      .value
+      .trim();
+
 
   const amount =
-    Number($("expenseAmount").value);
+    Number(
+      $("expenseAmount").value
+    );
+
 
   const paidBy =
     $("expensePaidBy").value;
 
+
   if (!description) {
-    toast("Enter a description.");
+
+    showToast(
+      "Enter an expense description."
+    );
+
     return;
   }
+
 
   if (!amount || amount <= 0) {
-    toast("Enter a valid amount.");
+
+    showToast(
+      "Enter a valid amount."
+    );
+
     return;
   }
+
 
   if (!paidBy) {
-    toast("Select who paid.");
+
+    showToast(
+      "Select who paid."
+    );
+
     return;
   }
 
-  $("addExpenseBtn").disabled = true;
-  $("addExpenseBtn").textContent = "Adding...";
+
+  $("addExpenseBtn").disabled =
+    true;
+
+  $("addExpenseBtn").textContent =
+    "Adding...";
+
 
   try {
 
-    if (!participantToken) {
-      throw new Error(
-        "Join the trip before adding expenses."
-      );
-    }
-
-    await api(
+    await supabase(
       "/rest/v1/rpc/add_expense_secure",
       {
         method: "POST",
+
         body: JSON.stringify({
-          p_trip_id: tripId,
-          p_participant_token: participantToken,
-          p_description: description,
-          p_amount: amount,
-          p_paid_by: paidBy
+
+          p_trip_id:
+            tripId,
+
+          p_participant_token:
+            participantToken,
+
+          p_description:
+            description,
+
+          p_amount:
+            amount,
+
+          p_paid_by:
+            paidBy
+
         })
       }
     );
 
-    $("expenseDescription").value = "";
-    $("expenseAmount").value = "";
+
+    $("expenseDescription")
+      .value = "";
+
+    $("expenseAmount")
+      .value = "";
+
 
     await loadTrip();
 
-    toast("Expense added.");
+
+    showToast(
+      "Expense added."
+    );
+
 
   } catch (error) {
+
     console.error(error);
-    toast(error.message);
+
+    showToast(
+      error.message
+    );
+
   }
 
-  $("addExpenseBtn").disabled = false;
-  $("addExpenseBtn").textContent = "Add Expense";
+
+  $("addExpenseBtn").disabled =
+    false;
+
+  $("addExpenseBtn").textContent =
+    "Add Expense";
+
+}
+
+
+function toastJoinMessage() {
+
+  showToast(
+    "Join the trip before adding an expense."
+  );
+
 }
 
 
 /* =====================================================
-   EXPENSE DISPLAY
+   EXPENSES
 ===================================================== */
 
 function renderExpenses() {
 
-  const container = $("expensesList");
+  const container =
+    $("expensesList");
 
   container.innerHTML = "";
 
+
   if (!expenses.length) {
+
     container.innerHTML =
-      `<p class="small">No expenses yet.</p>`;
+      `<p class="small">
+        No expenses yet.
+      </p>`;
+
     return;
   }
+
 
   expenses.forEach(expense => {
 
     const payer =
       people.find(
-        p => p.id === expense.paid_by
+        p =>
+          p.id ===
+          expense.paid_by
       );
+
 
     const creator =
       people.find(
@@ -373,104 +583,112 @@ function renderExpenses() {
           expense.created_by_participant_id
       );
 
+
     const item =
       document.createElement("div");
 
-    item.className = "expense";
+    item.className =
+      "expense";
+
 
     let deleteButton = "";
 
-    /*
-      Participant:
-      can delete only their own expense.
 
-      Owner:
-      can delete any expense.
+    /*
+      A participant can delete only
+      an expense created by themselves.
     */
 
-    const isCreator =
-      participantToken &&
-      creator &&
-      getStoredParticipantId() ===
-        creator.participant_id;
+    const isMine =
+      participantId &&
+      expense.created_by_participant_id ===
+        participantId;
 
-    if (isCreator) {
+
+    if (isMine) {
+
       deleteButton = `
+
         <button
+
           class="danger"
-          style="margin-top:10px;width:auto;padding:8px 12px"
-          onclick="deleteOwnExpense('${expense.id}')"
+
+          style="
+            margin-top:10px;
+            width:auto;
+            padding:8px 12px
+          "
+
+          onclick="
+            deleteOwnExpense('${expense.id}')
+          "
+
         >
+
           Delete
+
         </button>
+
       `;
+
     }
 
+
     item.innerHTML = `
+
       <div class="expense-top">
 
         <div>
 
           <div class="expense-name">
-            ${escapeHtml(expense.description)}
+
+            ${escapeHtml(
+              expense.description
+            )}
+
           </div>
 
+
           <div class="expense-meta">
+
             Paid by
             ${escapeHtml(
-              payer?.name || "Unknown"
+              payer?.name ||
+              "Unknown"
             )}
 
             ${
               creator
-                ? ` • Added by ${escapeHtml(creator.name)}`
+                ? ` • Added by ${escapeHtml(
+                    creator.name
+                  )}`
                 : ""
             }
+
           </div>
 
         </div>
 
+
         <div class="expense-amount">
-          ₹${Number(expense.amount).toFixed(2)}
+
+          ₹${Number(
+            expense.amount
+          ).toFixed(2)}
+
         </div>
 
       </div>
 
+
       ${deleteButton}
+
     `;
 
+
     container.appendChild(item);
+
   });
-}
-
-
-/* =====================================================
-   PARTICIPANT ID
-===================================================== */
-
-let storedParticipantId =
-  localStorage.getItem(
-    `nls_participant_id_${tripId}`
-  );
-
-function getStoredParticipantId() {
-  return storedParticipantId;
-}
-
-
-/*
-  We need the participant ID after joining.
-*/
-
-async function refreshParticipantIdentity() {
-
-  if (!participantToken) return;
-
-  /*
-    We don't expose token hashes.
-    We identify the participant through
-    the local participant ID saved during join.
-  */
 
 }
 
@@ -479,38 +697,68 @@ async function refreshParticipantIdentity() {
    DELETE OWN EXPENSE
 ===================================================== */
 
-async function deleteOwnExpense(expenseId) {
+async function deleteOwnExpense(
+  expenseId
+) {
 
   if (!participantToken) {
-    toast("Permission required.");
+
+    showToast(
+      "Permission required."
+    );
+
     return;
   }
 
-  if (!confirm("Delete your expense?")) {
+
+  if (
+    !confirm(
+      "Delete your expense?"
+    )
+  ) {
+
     return;
   }
+
 
   try {
 
-    await api(
+    await supabase(
       "/rest/v1/rpc/delete_my_expense",
       {
         method: "POST",
+
         body: JSON.stringify({
-          p_expense_id: expenseId,
-          p_participant_token: participantToken
+
+          p_expense_id:
+            expenseId,
+
+          p_participant_token:
+            participantToken
+
         })
       }
     );
 
+
     await loadTrip();
 
-    toast("Expense deleted.");
+
+    showToast(
+      "Expense deleted."
+    );
+
 
   } catch (error) {
+
     console.error(error);
-    toast(error.message);
+
+    showToast(
+      error.message
+    );
+
   }
+
 }
 
 
@@ -525,105 +773,169 @@ function renderBalances() {
 
   container.innerHTML = "";
 
-  if (!people.length) return;
+
+  if (!people.length) {
+    return;
+  }
+
 
   const total =
     expenses.reduce(
-      (sum, e) =>
-        sum + Number(e.amount),
+      (sum, expense) =>
+        sum +
+        Number(
+          expense.amount
+        ),
       0
     );
 
+
   const share =
-    total / people.length;
+    total /
+    people.length;
+
 
   const paid = {};
 
-  people.forEach(p => {
-    paid[p.id] = 0;
+
+  people.forEach(person => {
+
+    paid[person.id] =
+      0;
+
   });
 
-  expenses.forEach(e => {
+
+  expenses.forEach(expense => {
 
     if (
-      paid[e.paid_by] !== undefined
+      paid[
+        expense.paid_by
+      ] !== undefined
     ) {
-      paid[e.paid_by] +=
-        Number(e.amount);
+
+      paid[
+        expense.paid_by
+      ] +=
+        Number(
+          expense.amount
+        );
+
     }
 
   });
 
+
   people.forEach(person => {
 
     const balance =
-      paid[person.id] - share;
+      paid[person.id] -
+      share;
+
 
     const row =
       document.createElement("div");
 
-    row.className = "balance";
+    row.className =
+      "balance";
 
-    let status;
+
+    let status = "";
+
 
     if (balance > 0.005) {
 
       status = `
+
         <span class="positive">
-          gets ₹${balance.toFixed(2)}
+
+          gets
+          ₹${balance.toFixed(2)}
+
         </span>
+
       `;
 
-    } else if (balance < -0.005) {
+    } else if (
+      balance < -0.005
+    ) {
 
       status = `
+
         <span class="negative">
-          owes ₹${Math.abs(balance).toFixed(2)}
+
+          owes
+          ₹${Math.abs(
+            balance
+          ).toFixed(2)}
+
         </span>
+
       `;
 
     } else {
 
       status = `
+
         <span>
           settled
         </span>
+
       `;
 
     }
 
+
     row.innerHTML = `
+
       <div class="balance-row">
 
         <strong>
-          ${escapeHtml(person.name)}
+
+          ${escapeHtml(
+            person.name
+          )}
+
         </strong>
+
 
         ${status}
 
       </div>
+
     `;
 
-    container.appendChild(row);
+
+    container.appendChild(
+      row
+    );
 
   });
+
 
   if (total > 0) {
 
     const summary =
       document.createElement("p");
 
-    summary.className = "small";
+    summary.className =
+      "small";
 
-    summary.style.marginTop = "12px";
+    summary.style.marginTop =
+      "12px";
+
 
     summary.textContent =
       `Total spent: ₹${total.toFixed(2)} • ` +
       `Each share: ₹${share.toFixed(2)}`;
 
-    container.appendChild(summary);
+
+    container.appendChild(
+      summary
+    );
 
   }
+
 }
 
 
@@ -634,40 +946,58 @@ function renderBalances() {
 async function shareTrip() {
 
   const url =
-    location.href;
+    window.location.href;
+
 
   try {
 
-    if (navigator.share) {
+    if (
+      navigator.share
+    ) {
 
       await navigator.share({
+
         title:
           `${trip.name} — No Login Split`,
+
         text:
           "Join our expense split",
+
         url
+
       });
 
     } else {
 
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard
+        .writeText(url);
 
-      toast("Trip link copied!");
+      showToast(
+        "Trip link copied!"
+      );
 
     }
 
   } catch (error) {
 
-    if (error.name !== "AbortError") {
-      toast("Unable to share.");
+    if (
+      error.name !==
+      "AbortError"
+    ) {
+
+      showToast(
+        "Unable to share."
+      );
+
     }
 
   }
+
 }
 
 
 /* =====================================================
-   ADD PERSON FIELD — OWNER ONLY LATER
+   CREATE PERSON INPUT
 ===================================================== */
 
 function addPersonField() {
@@ -675,31 +1005,49 @@ function addPersonField() {
   const container =
     $("peopleInputs");
 
+
   const row =
     document.createElement("div");
 
   row.className =
     "person-row";
 
+
   row.innerHTML = `
+
     <input
+
       class="person-input"
+
       placeholder="Person's name"
+
     >
 
     <button
+
       class="remove-person"
+
       type="button"
+
     >
+
       ×
+
     </button>
+
   `;
+
 
   row.querySelector(
     ".remove-person"
-  ).onclick = () => row.remove();
+  ).onclick =
+    () => row.remove();
 
-  container.appendChild(row);
+
+  container.appendChild(
+    row
+  );
+
 }
 
 
@@ -710,126 +1058,205 @@ function addPersonField() {
 async function createTrip() {
 
   const name =
-    $("tripName").value.trim();
+    $("tripName")
+      .value
+      .trim();
 
-  const peopleNames =
-    [...document.querySelectorAll(
-      ".person-input"
-    )]
-      .map(input => input.value.trim())
+
+  const names =
+    [
+      ...document.querySelectorAll(
+        ".person-input"
+      )
+    ]
+      .map(
+        input =>
+          input.value.trim()
+      )
       .filter(Boolean);
 
+
   if (!name) {
-    toast("Enter a trip name.");
+
+    showToast(
+      "Enter a trip name."
+    );
+
     return;
   }
 
-  if (peopleNames.length < 2) {
-    toast("Add at least 2 people.");
+
+  if (names.length < 2) {
+
+    showToast(
+      "Add at least 2 people."
+    );
+
     return;
   }
 
-  $("createTripBtn").disabled = true;
+
+  $("createTripBtn").disabled =
+    true;
+
   $("createTripBtn").textContent =
     "Creating...";
 
+
   try {
 
+    /*
+      The database already creates
+      the people here.
+
+      We then create the private
+      participant identity for the
+      FIRST person only.
+
+      The other people will join
+      themselves using the same link.
+    */
+
     const result =
-      await api(
+      await supabase(
         "/rest/v1/rpc/create_trip",
         {
           method: "POST",
+
           body: JSON.stringify({
-            p_name: name,
-            p_people: peopleNames
+
+            p_name:
+              name,
+
+            p_people:
+              names
+
           })
         }
       );
+
 
     const data =
       Array.isArray(result)
         ? result[0]
         : result;
 
+
     if (
       !data?.trip_id ||
       !data?.owner_token
     ) {
+
       throw new Error(
         "Trip creation failed."
       );
+
     }
 
-    ownerToken =
-      data.owner_token;
 
-    localStorage.setItem(
-      `nls_owner_${data.trip_id}`,
-      ownerToken
-    );
+    const newTripId =
+      data.trip_id;
+
 
     /*
-      Owner is automatically joined as
-      the first participant.
-
-      We join using the first name.
+      Save owner permission.
     */
 
-    const firstName =
-      peopleNames[0];
+    localStorage.setItem(
+      `nls_owner_${newTripId}`,
+      data.owner_token
+    );
+
+
+    /*
+      IMPORTANT:
+      Join the FIRST existing person.
+
+      The fixed SQL function sees that
+      the person already exists and attaches
+      the participant identity to it.
+
+      It DOES NOT create a duplicate person.
+    */
 
     const joined =
-      await api(
+      await supabase(
         "/rest/v1/rpc/join_trip",
         {
           method: "POST",
+
           body: JSON.stringify({
-            p_trip_id: data.trip_id,
-            p_name: firstName
+
+            p_trip_id:
+              newTripId,
+
+            p_name:
+              names[0]
+
           })
         }
       );
+
 
     const participant =
       Array.isArray(joined)
         ? joined[0]
         : joined;
 
-    participantToken =
-      participant.participant_token;
 
-    storedParticipantId =
-      participant.participant_id;
+    if (
+      !participant?.participant_token
+    ) {
+
+      throw new Error(
+        "Could not create owner participant permission."
+      );
+
+    }
+
 
     localStorage.setItem(
-      `nls_participant_${data.trip_id}`,
-      participantToken
+      `nls_participant_${newTripId}`,
+      participant.participant_token
     );
+
 
     localStorage.setItem(
-      `nls_participant_id_${data.trip_id}`,
-      storedParticipantId
+      `nls_participant_id_${newTripId}`,
+      participant.participant_id
     );
 
-    location.href =
-      `${location.pathname}?trip=${data.trip_id}`;
+
+    /*
+      ONE master URL.
+    */
+
+    window.location.href =
+      `${location.pathname}?trip=${newTripId}`;
+
 
   } catch (error) {
 
     console.error(error);
-    toast(error.message);
+
+    showToast(
+      error.message
+    );
 
   }
 
-  $("createTripBtn").disabled = false;
+
+  $("createTripBtn").disabled =
+    false;
+
   $("createTripBtn").textContent =
     "Create Trip";
+
 }
 
 
 /* =====================================================
-   EVENTS
+   BUTTON EVENTS
 ===================================================== */
 
 $("addPersonBtn")
@@ -838,17 +1265,20 @@ $("addPersonBtn")
     addPersonField
   );
 
+
 $("createTripBtn")
   ?.addEventListener(
     "click",
     createTrip
   );
 
+
 $("addExpenseBtn")
   ?.addEventListener(
     "click",
     addExpense
   );
+
 
 $("shareBtn")
   ?.addEventListener(
@@ -858,7 +1288,7 @@ $("shareBtn")
 
 
 /* =====================================================
-   START
+   START APP
 ===================================================== */
 
 start();
