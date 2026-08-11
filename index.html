@@ -1,471 +1,339 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
   <meta charset="UTF-8">
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
   >
 
   <meta
     name="theme-color"
-    content="#6c5ce7"
+    content="#f7f8fc"
+  >
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="default"
   >
 
   <title>No Login Split</title>
 
-  <style>
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-      background: #f6f7fb;
-      color: #202124;
-    }
-
-    button,
-    input,
-    select {
-      font: inherit;
-    }
-
-    .app {
-      width: 100%;
-      max-width: 620px;
-      margin: auto;
-      padding: 18px;
-    }
-
-    header {
-      text-align: center;
-      padding: 28px 10px;
-    }
-
-    .logo {
-      width: 64px;
-      height: 64px;
-      margin: auto;
-      margin-bottom: 14px;
-      border-radius: 18px;
-      background: #6c5ce7;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      font-weight: 800;
-      box-shadow: 0 10px 30px rgba(108,92,231,.25);
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 31px;
-      letter-spacing: -1px;
-    }
-
-    h2 {
-      margin: 0 0 15px;
-      font-size: 21px;
-    }
-
-    .tagline {
-      margin: 7px 0 0;
-      color: #777;
-      font-size: 15px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 20px;
-      padding: 21px;
-      margin-bottom: 16px;
-      box-shadow: 0 5px 25px rgba(0,0,0,.06);
-    }
-
-    label {
-      display: block;
-      margin-bottom: 7px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #666;
-    }
-
-    input,
-    select {
-      width: 100%;
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 12px;
-      background: #fafafa;
-      outline: none;
-    }
-
-    input:focus,
-    select:focus {
-      border-color: #6c5ce7;
-      background: white;
-    }
-
-    button {
-      width: 100%;
-      border: 0;
-      border-radius: 12px;
-      padding: 14px 18px;
-      background: #6c5ce7;
-      color: white;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    button:active {
-      transform: scale(.98);
-    }
-
-    .secondary {
-      background: #efedff;
-      color: #5b4bd8;
-    }
-
-    .danger {
-      background: #fff0f0;
-      color: #d63031;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    /*
-      PERSON INPUTS
-    */
-
-    #peopleInputs {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .person-row {
-      display: flex;
-      width: 100%;
-      gap: 8px;
-    }
-
-    .person-row input {
-      flex: 1;
-      min-width: 0;
-      margin: 0;
-    }
-
-    .remove-person {
-      width: 48px;
-      min-width: 48px;
-      padding: 0;
-      background: #fff0f0;
-      color: #d63031;
-      font-size: 22px;
-    }
-
-    .expense {
-      padding: 15px 0;
-      border-bottom: 1px solid #eee;
-    }
-
-    .expense:last-child {
-      border-bottom: 0;
-    }
-
-    .expense-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 15px;
-    }
-
-    .expense-name {
-      font-weight: 700;
-    }
-
-    .expense-meta {
-      margin-top: 5px;
-      color: #777;
-      font-size: 13px;
-    }
-
-    .expense-amount {
-      font-weight: 800;
-      white-space: nowrap;
-    }
-
-    .balance {
-      background: #f7f7fb;
-      border-radius: 12px;
-      padding: 13px;
-      margin-bottom: 9px;
-    }
-
-    .balance-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .positive {
-      color: #159957;
-      font-weight: 700;
-    }
-
-    .negative {
-      color: #d63031;
-      font-weight: 700;
-    }
-
-    .small {
-      color: #777;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .share-box {
-      margin-top: 14px;
-      padding: 14px;
-      background: #f4f2ff;
-      border-radius: 13px;
-      word-break: break-all;
-      font-size: 13px;
-    }
-
-    .toast {
-      position: fixed;
-      left: 18px;
-      right: 18px;
-      bottom: 18px;
-      max-width: 580px;
-      margin: auto;
-      padding: 14px;
-      border-radius: 13px;
-      background: #202124;
-      color: white;
-      text-align: center;
-      display: none;
-      z-index: 1000;
-    }
-
-    @media (max-width: 480px) {
-
-      .app {
-        padding: 13px;
-      }
-
-      header {
-        padding: 23px 8px;
-      }
-
-      h1 {
-        font-size: 28px;
-      }
-
-    }
-
-  </style>
-
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
 </head>
-
 
 <body>
 
-  <div class="app">
+  <!-- =================================================
+       APP
+  ================================================== -->
 
-    <header>
-
-      <div class="logo">
-        ÷
-      </div>
-
-      <h1>
-        No Login Split
-      </h1>
-
-      <p class="tagline">
-        Split expenses. No login. No hassle.
-      </p>
-
-    </header>
-
+  <main class="app">
 
     <!-- HOME -->
+    <section
+      id="homeScreen"
+      class="screen"
+    >
 
-    <section id="homeScreen">
+      <div class="hero">
 
-      <div class="card">
+        <div class="logo">
+          <span class="logo-icon">₹</span>
+        </div>
 
-        <h2>
-          Create a new trip
-        </h2>
+        <div class="brand">
+          <h1>No Login Split</h1>
 
-        <label>
+          <p>
+            Split trip expenses.
+            <br>
+            No accounts. No hassle.
+          </p>
+        </div>
+
+      </div>
+
+
+      <div class="card create-card">
+
+        <div class="card-heading">
+
+          <div>
+            <span class="eyebrow">
+              START A NEW TRIP
+            </span>
+
+            <h2>
+              Create your split
+            </h2>
+          </div>
+
+        </div>
+
+
+        <label for="tripName">
           Trip name
         </label>
 
         <input
           id="tripName"
           type="text"
-          placeholder="e.g. Goa Trip"
+          placeholder="Goa Trip 2026"
           autocomplete="off"
           autocapitalize="words"
         >
 
 
-        <label>
-          People
-        </label>
+        <div class="people-heading">
 
-        <!-- JavaScript creates EVERY person field -->
+          <label>
+            People
+          </label>
+
+          <button
+            id="addPersonBtn"
+            type="button"
+            class="add-person-btn"
+          >
+            + Add person
+          </button>
+
+        </div>
+
 
         <div id="peopleInputs"></div>
 
 
         <button
-          id="addPersonBtn"
-          class="secondary"
-          type="button"
-        >
-          + Add person
-        </button>
-
-
-        <div style="height:10px"></div>
-
-
-        <button
           id="createTripBtn"
           type="button"
+          class="primary-btn"
         >
           Create Trip
         </button>
 
+
+        <div class="no-login-note">
+
+          <span>🔒</span>
+
+          <span>
+            No login required.
+            Your trip is saved online.
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="feature-row">
+
+        <div class="feature">
+          <span>⚡</span>
+          <strong>Simple</strong>
+          <small>No account</small>
+        </div>
+
+        <div class="feature">
+          <span>🔗</span>
+          <strong>One link</strong>
+          <small>Share your trip</small>
+        </div>
+
+        <div class="feature">
+          <span>💰</span>
+          <strong>Fair split</strong>
+          <small>Easy balances</small>
+        </div>
+
       </div>
 
 
-      <div class="card">
-
-        <h2>
-          Already have a trip?
-        </h2>
-
-        <p class="small">
-          Open the trip link someone shared with you.
-          No login is required.
-        </p>
-
-      </div>
+      <p class="footer">
+        No Login Split · Made for trips & outings
+      </p>
 
     </section>
 
 
-    <!-- TRIP -->
+
+    <!-- =================================================
+         TRIP
+    ================================================== -->
 
     <section
       id="tripScreen"
-      class="hidden"
+      class="screen hidden"
     >
 
+      <!-- Header -->
 
-      <div class="card">
+      <header class="trip-header">
 
-        <h2 id="tripTitle">
-          Trip
-        </h2>
+        <div class="trip-header-left">
 
-        <p class="small">
-          Everyone uses this same master link.
-        </p>
+          <div class="mini-logo">
+            ₹
+          </div>
 
+          <div>
 
-        <div class="share-box">
+            <span class="brand-small">
+              NO LOGIN SPLIT
+            </span>
 
-          <strong>
-            Master trip link
-          </strong>
+            <h1 id="tripTitle">
+              Your Trip
+            </h1>
 
-          <div
-            id="tripLink"
-            style="margin-top:7px"
-          ></div>
+          </div>
 
         </div>
 
 
-        <div style="height:10px"></div>
-
-
         <button
           id="shareBtn"
-          class="secondary"
           type="button"
+          class="share-btn"
         >
-          🔗 Share Trip
+          <span>↗</span>
+          Share
+        </button>
+
+      </header>
+
+
+
+      <!-- Master link -->
+
+      <div class="link-card">
+
+        <div class="link-icon">
+          🔗
+        </div>
+
+        <div class="link-content">
+
+          <span class="eyebrow">
+            MASTER TRIP LINK
+          </span>
+
+          <p id="tripLink">
+            Loading...
+          </p>
+
+        </div>
+
+        <button
+          type="button"
+          class="copy-btn"
+          onclick="
+            navigator.clipboard
+              .writeText(window.location.href)
+              .then(() => toast('Link copied!'))
+          "
+        >
+          Copy
         </button>
 
       </div>
 
 
-      <div class="card">
 
-        <h2>
-          Add expense
-        </h2>
+      <!-- Add expense -->
+
+      <div class="card expense-card">
+
+        <div class="section-title">
+
+          <div class="section-icon">
+            +
+          </div>
+
+          <div>
+
+            <h2>
+              Add expense
+            </h2>
+
+            <p>
+              What did you spend?
+            </p>
+
+          </div>
+
+        </div>
 
 
-        <label>
+        <label for="expenseDescription">
           Description
         </label>
 
         <input
           id="expenseDescription"
           type="text"
-          placeholder="e.g. Hotel"
+          placeholder="Dinner, hotel, fuel..."
           autocomplete="off"
         >
 
 
-        <label>
-          Amount
-        </label>
+        <div class="form-grid">
 
-        <input
-          id="expenseAmount"
-          type="number"
-          inputmode="decimal"
-          placeholder="₹ 0"
-        >
+          <div>
+
+            <label for="expenseAmount">
+              Amount
+            </label>
+
+            <div class="amount-input">
+
+              <span>₹</span>
+
+              <input
+                id="expenseAmount"
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              >
+
+            </div>
+
+          </div>
 
 
-        <label>
-          Paid by
-        </label>
+          <div>
 
-        <select
-          id="expensePaidBy"
-        ></select>
+            <label for="expensePaidBy">
+              Paid by
+            </label>
+
+            <select
+              id="expensePaidBy"
+            >
+            </select>
+
+          </div>
+
+        </div>
 
 
         <button
           id="addExpenseBtn"
           type="button"
+          class="primary-btn"
         >
           Add Expense
         </button>
@@ -473,40 +341,102 @@
       </div>
 
 
-      <div class="card">
 
-        <h2>
-          Expenses
-        </h2>
+      <!-- Expenses -->
 
-        <div id="expensesList"></div>
+      <div class="section-block">
+
+        <div class="section-heading">
+
+          <div>
+
+            <span class="eyebrow">
+              ACTIVITY
+            </span>
+
+            <h2>
+              Expenses
+            </h2>
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="expensesList"
+          class="expenses-list"
+        >
+        </div>
 
       </div>
 
 
-      <div class="card">
 
-        <h2>
-          Balances
-        </h2>
+      <!-- Balances -->
 
-        <div id="balancesList"></div>
+      <div class="card balances-card">
+
+        <div class="section-title">
+
+          <div class="section-icon balance-icon">
+            ₹
+          </div>
+
+          <div>
+
+            <h2>
+              Balances
+            </h2>
+
+            <p>
+              See who owes and who gets
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div
+          id="balancesList"
+          class="balances-list"
+        >
+        </div>
 
       </div>
 
+
+
+      <div class="trip-footer">
+
+        <strong>
+          No Login Split
+        </strong>
+
+        <span>
+          Split expenses without creating an account.
+        </span>
+
+      </div>
 
     </section>
 
-  </div>
+  </main>
 
+
+
+  <!-- Toast -->
 
   <div
     id="toast"
     class="toast"
-  ></div>
+  >
+  </div>
 
 
-  <!-- SUPABASE CONFIG -->
+
+  <!-- Supabase configuration -->
 
   <script>
 
@@ -522,5 +452,4 @@
   <script src="app.js"></script>
 
 </body>
-
 </html>
