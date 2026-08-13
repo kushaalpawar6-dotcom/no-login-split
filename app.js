@@ -608,12 +608,11 @@ function renderTrip() {
 
   renderExpenses();
 
+renderTripSummary();
 
-  renderBalances();
+renderBalances();
 
-
-  // NEW: calculate and display who owes whom
-  renderWhoOwesWhom();
+renderWhoOwesWhom();
 
 }
 
