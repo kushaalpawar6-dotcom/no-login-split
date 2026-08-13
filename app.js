@@ -815,6 +815,86 @@ async function selectMember(
     async function addPersonToTrip() {
 
   if (!participantToken) {
+    toast("Please select your name first.");
+    showMemberSelector();
+    return;
+  }
+
+  const name =
+    prompt("Enter the new person's name:");
+
+  if (!name) {
+    return;
+  }
+
+  const cleanName =
+    name.trim();
+
+  if (!cleanName) {
+    toast("Enter a valid name.");
+    return;
+  }
+
+  const exists =
+    people.some(
+      person =>
+        person.name.trim().toLowerCase() ===
+        cleanName.toLowerCase()
+    );
+
+  if (exists) {
+    toast(
+      "This person is already in the trip."
+    );
+    return;
+  }
+
+  try {
+
+    const result =
+      await api(
+        "/rest/v1/rpc/join_trip",
+        {
+          method: "POST",
+
+          body: JSON.stringify({
+            p_trip_id: tripId,
+            p_name: cleanName
+          })
+        }
+      );
+
+    const participant =
+      Array.isArray(result)
+        ? result[0]
+        : result;
+
+    if (!participant?.participant_id) {
+      throw new Error(
+        "Could not add this person."
+      );
+    }
+
+    await loadTrip();
+
+    toast(
+      `${cleanName} added to the trip ✓`
+    );
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    toast(error.message);
+
+  }
+
+}
+    async function addPersonToTrip() {
+
+  if (!participantToken) {
 
     toast(
       "Please select your name first."
