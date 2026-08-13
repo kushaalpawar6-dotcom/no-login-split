@@ -1809,7 +1809,205 @@ async function deleteOwnExpense(
 /* =====================================================
    BALANCES
 ===================================================== */
+function renderTripSummary() {
 
+  let card =
+    $("tripSummaryCard");
+
+  if (!card) {
+
+    card =
+      document.createElement("div");
+
+    card.id =
+      "tripSummaryCard";
+
+    card.className =
+      "card";
+
+    card.style.marginBottom =
+      "16px";
+
+    const balancesCard =
+      document.querySelector(
+        ".balances-card"
+      );
+
+    if (
+      balancesCard &&
+      balancesCard.parentNode
+    ) {
+
+      balancesCard.parentNode.insertBefore(
+        card,
+        balancesCard
+      );
+
+    } else {
+
+      $("tripScreen")
+        .appendChild(card);
+
+    }
+
+  }
+
+
+  const total =
+    expenses.reduce(
+      (sum, expense) =>
+        sum +
+        Number(expense.amount || 0),
+      0
+    );
+
+
+  const memberCount =
+    people.length;
+
+
+  const average =
+    memberCount > 0
+      ? total / memberCount
+      : 0;
+
+
+  card.innerHTML = `
+
+    <div
+      class="section-title"
+      style="
+        margin-bottom:14px;
+      "
+    >
+
+      <div
+        class="section-icon"
+      >
+        📊
+      </div>
+
+      <div>
+
+        <h2>
+          Trip Summary
+        </h2>
+
+        <p>
+          Overview of your trip expenses.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(3, 1fr);
+        gap:10px;
+      "
+    >
+
+      <div
+        style="
+          padding:14px 10px;
+          border-radius:14px;
+          background:#fafbfe;
+          text-align:center;
+        "
+      >
+
+        <div
+          style="
+            font-size:11px;
+            color:#737887;
+          "
+        >
+          Total spent
+        </div>
+
+        <div
+          style="
+            margin-top:5px;
+            font-size:18px;
+            font-weight:800;
+          "
+        >
+          ₹${total.toFixed(2)}
+        </div>
+
+      </div>
+
+
+      <div
+        style="
+          padding:14px 10px;
+          border-radius:14px;
+          background:#fafbfe;
+          text-align:center;
+        "
+      >
+
+        <div
+          style="
+            font-size:11px;
+            color:#737887;
+          "
+        >
+          People
+        </div>
+
+        <div
+          style="
+            margin-top:5px;
+            font-size:18px;
+            font-weight:800;
+          "
+        >
+          ${memberCount}
+        </div>
+
+      </div>
+
+
+      <div
+        style="
+          padding:14px 10px;
+          border-radius:14px;
+          background:#fafbfe;
+          text-align:center;
+        "
+      >
+
+        <div
+          style="
+            font-size:11px;
+            color:#737887;
+          "
+        >
+          Avg / person
+        </div>
+
+        <div
+          style="
+            margin-top:5px;
+            font-size:18px;
+            font-weight:800;
+          "
+        >
+          ₹${average.toFixed(2)}
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
 function renderBalances() {
 
   const container =
