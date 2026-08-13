@@ -1307,7 +1307,18 @@ async function addExpense() {
       $("expenseAmount")
         .value
     );
+const expenseDate =
+  $("expenseDate")
+    .value;
+  if (!expenseDate) {
 
+  toast(
+    "Please select a date."
+  );
+
+  return;
+
+}
 
   const paidBy =
     $("expensePaidBy")
@@ -1393,10 +1404,13 @@ async function addExpense() {
               description,
 
             p_amount:
-              amount,
+  amount,
 
-            p_paid_by:
-              paidBy
+p_expense_date:
+  expenseDate,
+
+p_paid_by:
+  paidBy
 
           })
         }
