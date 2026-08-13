@@ -2982,11 +2982,7 @@ $("addExpenseBtn")
     "click",
     addExpense
   );
-$("addTripPersonBtn")
-  .addEventListener(
-    "click",
-    addPersonToTrip
-  );
+
 
 $("shareBtn")
   .addEventListener(
