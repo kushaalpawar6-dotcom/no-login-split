@@ -1670,21 +1670,25 @@ function renderExpenses() {
 
             <div class="expense-meta">
 
-              Paid by
-              ${escapeHtml(
-                payer?.name ||
-                "Unknown"
-              )}
+  ${escapeHtml(
+    expense.expense_date
+  )}
 
-              ${
-                creator
-                  ? ` • Added by ${escapeHtml(
-                      creator.name
-                    )}`
-                  : ""
-              }
+  • Paid by
+  ${escapeHtml(
+    payer?.name ||
+    "Unknown"
+  )}
 
-            </div>
+  ${
+    creator
+      ? ` • Added by ${escapeHtml(
+          creator.name
+        )}`
+      : ""
+  }
+
+</div>
 
           </div>
 
