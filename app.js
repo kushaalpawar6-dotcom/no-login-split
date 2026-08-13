@@ -442,9 +442,9 @@ async function loadTrip() {
 
 
     expenses =
-      await api(
-        `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,paid_by,created_by_participant_id,created_at&order=created_at.desc`
-      );
+  await api(
+    `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at`
+  );
 
 
     await loadExpenseParticipants();
