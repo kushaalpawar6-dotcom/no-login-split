@@ -172,7 +172,6 @@
 
     <section
       id="tripScreen"
-      
       class="screen hidden"
     >
 
@@ -201,17 +200,41 @@
         </div>
 
 
-        <button
-          id="shareBtn"
-          type="button"
-          class="share-btn"
+        <!-- Trip actions -->
+
+        <div
+          style="
+            display:flex;
+            align-items:center;
+            gap:8px;
+          "
         >
 
-          <span>↗</span>
+          <!-- NEW: Add person to existing trip -->
 
-          Share
+          <button
+            id="addTripPersonBtn"
+            type="button"
+            class="share-btn"
+            onclick="addPersonToTrip()"
+          >
+            + Add Person
+          </button>
 
-        </button>
+
+          <button
+            id="shareBtn"
+            type="button"
+            class="share-btn"
+          >
+
+            <span>↗</span>
+
+            Share
+
+          </button>
+
+        </div>
 
       </header>
 
@@ -315,16 +338,21 @@
 
 
           <div>
-<div>
-  <label for="expenseDate">
-    Date
-  </label>
 
-  <input
-    id="expenseDate"
-    type="date"
-  >
-</div>
+            <div>
+
+              <label for="expenseDate">
+                Date
+              </label>
+
+              <input
+                id="expenseDate"
+                type="date"
+              >
+
+            </div>
+
+
             <label for="expensePaidBy">
               Paid by
             </label>
@@ -456,7 +484,167 @@
   </script>
 
 
+  <!-- Main JavaScript -->
+
   <script src="app.js"></script>
+
+
+  <!-- Add Person to Existing Trip -->
+
+  <script>
+
+    async function addPersonToTrip() {
+
+      if (!participantToken) {
+
+        toast(
+          "Please select your name first."
+        );
+
+        showMemberSelector();
+
+        return;
+      }
+
+
+      const name =
+        prompt(
+          "Enter the new person's name:"
+        );
+
+
+      if (name === null) {
+        return;
+      }
+
+
+      const cleanName =
+        name.trim();
+
+
+      if (!cleanName) {
+
+        toast(
+          "Enter a valid name."
+        );
+
+        return;
+      }
+
+
+      const alreadyExists =
+        people.some(
+          person =>
+            String(person.name)
+              .trim()
+              .toLowerCase() ===
+            cleanName.toLowerCase()
+        );
+
+
+      if (alreadyExists) {
+
+        toast(
+          "This person is already in the trip."
+        );
+
+        return;
+      }
+
+
+      const button =
+        document.getElementById(
+          "addTripPersonBtn"
+        );
+
+
+      if (button) {
+
+        button.disabled = true;
+
+        button.textContent =
+          "Adding...";
+
+      }
+
+
+      try {
+
+        const result =
+          await api(
+            "/rest/v1/rpc/join_trip",
+            {
+              method: "POST",
+
+              body: JSON.stringify({
+
+                p_trip_id:
+                  tripId,
+
+                p_name:
+                  cleanName
+
+              })
+            }
+          );
+
+
+        const participant =
+          Array.isArray(result)
+            ? result[0]
+            : result;
+
+
+        if (
+          !participant ||
+          !participant.participant_id
+        ) {
+
+          throw new Error(
+            "Could not add this person."
+          );
+
+        }
+
+
+        await loadTrip();
+
+
+        toast(
+          `${cleanName} added to the trip ✓`
+        );
+
+      }
+
+
+      catch (error) {
+
+        console.error(error);
+
+        toast(
+          error.message ||
+          "Could not add this person."
+        );
+
+      }
+
+
+      finally {
+
+        if (button) {
+
+          button.disabled = false;
+
+          button.textContent =
+            "+ Add Person";
+
+        }
+
+      }
+
+    }
+
+  </script>
 
 </body>
 </html>
