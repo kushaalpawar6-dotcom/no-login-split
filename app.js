@@ -441,9 +441,9 @@ async function loadTrip() {
       );
 
 
-    expenses =
+  expenses =
   await api(
-    `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at`
+    `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at&order=created_at.asc`
   );
 
 
