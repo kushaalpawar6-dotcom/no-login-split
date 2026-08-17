@@ -1432,14 +1432,377 @@ async function addExpense() {
 
   if (!participantToken) {
 
-    toast(
-      "Please select your name first."
-    );
+    toast("Please select your name first.");
 
     showMemberSelector();
 
     return;
   }
+
+
+  const description =
+    $("expenseDescription").value.trim();
+
+
+  const amount =
+    Number($("expenseAmount").value);
+
+
+  const expenseDate =
+    $("expenseDate").value;
+
+
+  if (!description) {
+
+    toast("Enter a description.");
+
+    return;
+  }
+
+
+  if (!amount || amount <= 0) {
+
+    toast("Enter a valid amount.");
+
+    return;
+  }
+
+
+  if (!expenseDate) {
+
+    toast("Please select a date.");
+
+    return;
+  }
+
+
+  /*
+    Get everyone who paid
+    and the amount they paid.
+  */
+
+  const payerCheckboxes =
+    Array.from(
+      document.querySelectorAll(
+        ".expense-payer:checked"
+      )
+    );
+
+
+  if (!payerCheckboxes.length) {
+
+    toast("Select at least one person who paid.");
+
+    return;
+  }
+
+
+  const payments = [];
+
+
+  payerCheckboxes.forEach(
+    checkbox => {
+
+      const amountInput =
+        document.querySelector(
+          `.payer-amount[data-person-id="${checkbox.value}"]`
+        );
+
+
+      const payerAmount =
+        Number(
+          amountInput?.value || 0
+        );
+
+
+      if (
+        payerAmount > 0
+      ) {
+
+        payments.push({
+
+          person_id:
+            checkbox.value,
+
+          amount:
+            payerAmount
+
+        });
+
+      }
+
+    }
+  );
+
+
+  if (!payments.length) {
+
+    toast(
+      "Enter the amount paid by each selected person."
+    );
+
+    return;
+  }
+
+
+  /*
+    Make sure payer amounts
+    exactly equal expense total.
+  */
+
+  const paymentTotal =
+    payments.reduce(
+      (sum, payment) =>
+        sum +
+        payment.amount,
+      0
+    );
+
+
+  if (
+    Math.abs(
+      paymentTotal - amount
+    ) > 0.01
+  ) {
+
+    toast(
+      `Payer amounts must total ₹${amount.toFixed(2)}. Currently ₹${paymentTotal.toFixed(2)}.`
+    );
+
+    return;
+  }
+
+
+  /*
+    Participants who share this expense.
+  */
+
+  const selectedParticipants =
+    getSelectedExpenseParticipants();
+
+
+  if (
+    !selectedParticipants.length
+  ) {
+
+    toast(
+      "Select at least one participant."
+    );
+
+    return;
+  }
+
+
+  const button =
+    $("addExpenseBtn");
+
+
+  button.disabled = true;
+
+  button.textContent =
+    "Adding...";
+
+
+  try {
+
+    /*
+      We still create the expense using
+      the existing secure RPC.
+
+      For compatibility, the first payer
+      is sent as paid_by.
+
+      The real payment split is saved
+      separately in expense_payments.
+    */
+
+    const primaryPayer =
+      payments[0].person_id;
+
+
+    const result =
+      await api(
+        "/rest/v1/rpc/add_expense_secure",
+        {
+          method: "POST",
+
+          body: JSON.stringify({
+
+            p_trip_id:
+              tripId,
+
+            p_participant_token:
+              participantToken,
+
+            p_description:
+              description,
+
+            p_amount:
+              amount,
+
+            p_paid_by:
+              primaryPayer,
+
+            p_expense_date:
+              expenseDate
+
+          })
+        }
+      );
+
+
+    let expenseId =
+      Array.isArray(result)
+        ? result[0]?.id
+        : result?.id;
+
+
+    /*
+      If the RPC returns no ID,
+      find the newly-created expense.
+    */
+
+    if (!expenseId) {
+
+      const latest =
+        await api(
+          `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&created_by_participant_id=eq.${encodeURIComponent(participantId)}&description=eq.${encodeURIComponent(description)}&amount=eq.${encodeURIComponent(amount)}&select=id,created_at&order=created_at.desc&limit=1`
+        );
+
+
+      expenseId =
+        latest?.[0]?.id;
+
+    }
+
+
+    if (!expenseId) {
+
+      throw new Error(
+        "Expense was added, but its ID could not be found."
+      );
+
+    }
+
+
+    /*
+      Save who shares this expense.
+    */
+
+    await saveExpenseParticipants(
+      expenseId,
+      selectedParticipants
+    );
+
+
+    /*
+      Save each person's actual payment.
+    */
+
+    await api(
+      "/rest/v1/expense_payments",
+      {
+        method: "POST",
+
+        headers: {
+          Prefer:
+            "return=minimal"
+        },
+
+        body:
+          JSON.stringify(
+            payments.map(
+              payment => ({
+
+                expense_id:
+                  expenseId,
+
+                person_id:
+                  payment.person_id,
+
+                amount:
+                  payment.amount
+
+              })
+            )
+          )
+
+      }
+    );
+
+
+    /*
+      Clear form.
+    */
+
+    $("expenseDescription")
+      .value = "";
+
+
+    $("expenseAmount")
+      .value = "";
+
+
+    document
+      .querySelectorAll(
+        ".expense-payer"
+      )
+      .forEach(
+        checkbox => {
+
+          checkbox.checked = false;
+
+        }
+      );
+
+
+    document
+      .querySelectorAll(
+        ".payer-amount"
+      )
+      .forEach(
+        input => {
+
+          input.value = "";
+
+          input.disabled = true;
+
+        }
+      );
+
+
+    await loadTrip();
+
+
+    toast(
+      "Expense added ✓"
+    );
+
+  }
+
+
+  catch (error) {
+
+    console.error(error);
+
+    toast(
+      error.message ||
+      "Could not add expense."
+    );
+
+  }
+
+
+  finally {
+
+    button.disabled = false;
+
+    button.textContent =
+      "Add Expense";
+
+  }
+
+}
 
 
   const description =
