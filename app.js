@@ -1,51 +1,34 @@
-const SUPABASE_URL =
-  window.SUPABASE_URL;
-
-const SUPABASE_KEY =
-  window.SUPABASE_KEY;
+const SUPABASE_URL = window.SUPABASE_URL;
+const SUPABASE_KEY = window.SUPABASE_KEY;
 
 const tripId =
-  new URLSearchParams(
-    window.location.search
-  ).get("trip");
-
+  new URLSearchParams(window.location.search).get("trip");
 
 let trip = null;
 let people = [];
 let expenses = [];
 let expenseParticipants = {};
 
-
-/* =====================================================
-   CURRENT USER
-===================================================== */
-
 let participantToken =
   tripId
-    ? localStorage.getItem(
-        `nls_participant_${tripId}`
-      )
+    ? localStorage.getItem(`nls_participant_${tripId}`)
     : null;
 
 let participantId =
   tripId
-    ? localStorage.getItem(
-        `nls_participant_id_${tripId}`
-      )
+    ? localStorage.getItem(`nls_participant_id_${tripId}`)
     : null;
 
 
-/* =====================================================
+/* =========================
    HELPERS
-===================================================== */
+========================= */
 
 function $(id) {
   return document.getElementById(id);
 }
 
-
 function toast(message) {
-
   const box = $("toast");
 
   if (!box) {
@@ -61,9 +44,7 @@ function toast(message) {
   }, 3000);
 }
 
-
 function escapeHtml(value) {
-
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -73,52 +54,42 @@ function escapeHtml(value) {
 }
 
 
-/* =====================================================
+/* =========================
    SUPABASE API
-===================================================== */
+========================= */
 
 async function api(path, options = {}) {
 
-  const response =
-    await fetch(
-      `${SUPABASE_URL}${path}`,
-      {
-        ...options,
+  const response = await fetch(
+    `${SUPABASE_URL}${path}`,
+    {
+      ...options,
 
-        headers: {
-          apikey: SUPABASE_KEY,
+      headers: {
+        apikey: SUPABASE_KEY,
 
-          Authorization:
-            `Bearer ${SUPABASE_KEY}`,
+        Authorization:
+          `Bearer ${SUPABASE_KEY}`,
 
-          "Content-Type":
-            "application/json",
+        "Content-Type":
+          "application/json",
 
-          ...(options.headers || {})
-        }
+        ...(options.headers || {})
       }
-    );
+    }
+  );
 
-
-  const text =
-    await response.text();
-
+  const text = await response.text();
 
   let data = null;
 
   try {
-    data = text
-      ? JSON.parse(text)
-      : null;
-  }
-
-  catch {
+    data = text ? JSON.parse(text) : null;
+  } catch {
     data = text;
   }
 
-
   if (!response.ok) {
-
     throw new Error(
       data?.message ||
       data?.hint ||
@@ -127,91 +98,56 @@ async function api(path, options = {}) {
     );
   }
 
-
   return data;
 }
 
 
-/* =====================================================
+/* =========================
    PEOPLE INPUTS
-===================================================== */
+========================= */
 
 let personCounter = 0;
-
 
 function createPersonField() {
 
   personCounter++;
 
-  const container =
-    $("peopleInputs");
+  const container = $("peopleInputs");
 
-  const row =
-    document.createElement("div");
+  const row = document.createElement("div");
 
-  row.className =
-    "person-row";
+  row.className = "person-row";
 
-
-  const input =
-    document.createElement("input");
+  const input = document.createElement("input");
 
   input.type = "text";
-
-  input.className =
-    "person-input";
+  input.className = "person-input";
 
   input.placeholder =
     `Person ${personCounter}`;
 
-  input.autocomplete =
-    "new-password";
-
-  input.autocapitalize =
-    "words";
-
-  input.autocorrect =
-    "off";
-
-  input.spellcheck =
-    false;
-
-  input.name =
-    `person_${Date.now()}_${personCounter}`;
-
-  input.value = "";
-
+  input.autocomplete = "off";
+  input.autocapitalize = "words";
+  input.autocorrect = "off";
+  input.spellcheck = false;
 
   const remove =
     document.createElement("button");
 
   remove.type = "button";
-
-  remove.className =
-    "remove-person";
-
+  remove.className = "remove-person";
   remove.textContent = "×";
 
-
   remove.onclick = () => {
-
     row.remove();
-
     renumberPeople();
-
   };
-
 
   row.appendChild(input);
   row.appendChild(remove);
 
   container.appendChild(row);
-
-  setTimeout(() => {
-    input.value = "";
-  }, 0);
 }
-
 
 function renumberPeople() {
 
@@ -220,36 +156,27 @@ function renumberPeople() {
       "#peopleInputs .person-input"
     );
 
-  inputs.forEach(
-    (input, index) => {
+  inputs.forEach((input, index) => {
+    input.placeholder =
+      `Person ${index + 1}`;
+  });
 
-      input.placeholder =
-        `Person ${index + 1}`;
-
-    }
-  );
-
-  personCounter =
-    inputs.length;
+  personCounter = inputs.length;
 }
-
 
 function addPerson() {
   createPersonField();
 }
 
 
-/* =====================================================
+/* =========================
    CREATE TRIP
-===================================================== */
+========================= */
 
 async function createTrip() {
 
   const tripName =
-    $("tripName")
-      .value
-      .trim();
-
+    $("tripName").value.trim();
 
   const inputs =
     Array.from(
@@ -258,79 +185,56 @@ async function createTrip() {
       )
     );
 
-
   const names =
     inputs
-      .map(
-        input =>
-          input.value.trim()
-      )
-      .filter(
-        name =>
-          name.length > 0
-      );
-
+      .map(input => input.value.trim())
+      .filter(name => name.length > 0);
 
   if (!tripName) {
     toast("Enter a trip name.");
     return;
   }
 
-
   if (names.length < 2) {
     toast("Add at least 2 people.");
     return;
   }
 
-
   const lowerNames =
-    names.map(
-      name =>
-        name.toLowerCase()
-    );
-
+    names.map(name => name.toLowerCase());
 
   if (
-    new Set(lowerNames).size !==
-    names.length
+    new Set(lowerNames).size !== names.length
   ) {
-
     toast(
       "Each person's name should be different."
     );
-
     return;
   }
 
-
-  const button =
-    $("createTripBtn");
+  const button = $("createTripBtn");
 
   button.disabled = true;
   button.textContent = "Creating...";
 
-
   try {
 
-    const result =
-      await api(
-        "/rest/v1/rpc/create_trip",
-        {
-          method: "POST",
+    const result = await api(
+      "/rest/v1/rpc/create_trip",
+      {
+        method: "POST",
 
-          body: JSON.stringify({
-            p_name: tripName,
-            p_people: names
-          })
-        }
-      );
-
+        body: JSON.stringify({
+          p_name: tripName,
+          p_people: names
+        })
+      }
+    );
 
     const data =
       Array.isArray(result)
         ? result[0]
         : result;
-
 
     if (!data?.trip_id) {
       throw new Error(
@@ -338,73 +242,54 @@ async function createTrip() {
       );
     }
 
+    const newTripId = data.trip_id;
 
-    const newTripId =
-      data.trip_id;
+    const joined = await api(
+      "/rest/v1/rpc/join_trip",
+      {
+        method: "POST",
 
-
-    const joined =
-      await api(
-        "/rest/v1/rpc/join_trip",
-        {
-          method: "POST",
-
-          body: JSON.stringify({
-            p_trip_id: newTripId,
-            p_name: names[0]
-          })
-        }
-      );
-
+        body: JSON.stringify({
+          p_trip_id: newTripId,
+          p_name: names[0]
+        })
+      }
+    );
 
     const participant =
       Array.isArray(joined)
         ? joined[0]
         : joined;
 
-
-    if (
-      !participant?.participant_token
-    ) {
-
+    if (!participant?.participant_token) {
       throw new Error(
         "Could not create your permission."
       );
     }
-
 
     localStorage.setItem(
       `nls_participant_${newTripId}`,
       participant.participant_token
     );
 
-
     localStorage.setItem(
       `nls_participant_id_${newTripId}`,
       participant.participant_id
     );
 
-
     window.location.href =
       `${window.location.pathname}?trip=${newTripId}`;
 
-  }
-
-
-  catch (error) {
+  } catch (error) {
 
     console.error(error);
 
     toast(error.message);
 
     button.disabled = false;
-
-    button.textContent =
-      "Create Trip";
+    button.textContent = "Create Trip";
   }
 }
-
-
 /* =====================================================
    LOAD TRIP
 ===================================================== */
@@ -413,16 +298,11 @@ async function loadTrip() {
 
   try {
 
-    const trips =
-      await api(
-        `/rest/v1/trip_public?id=eq.${encodeURIComponent(tripId)}&select=id,name,created_at`
-      );
+    const trips = await api(
+      `/rest/v1/trip_public?id=eq.${encodeURIComponent(tripId)}&select=id,name,created_at`
+    );
 
-
-    if (
-      !trips ||
-      trips.length === 0
-    ) {
+    if (!trips || trips.length === 0) {
 
       toast("Trip not found.");
 
@@ -431,37 +311,28 @@ async function loadTrip() {
       return;
     }
 
-
     trip = trips[0];
 
+    people = await api(
+      `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
+    );
 
-    people =
-      await api(
-        `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
-      );
-
-
-  expenses =
-  await api(
-    `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at&order=created_at.asc`
-  );
-
+    expenses = await api(
+      `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at&order=created_at.asc`
+    );
 
     await loadExpenseParticipants();
 
-
     renderTrip();
 
-  }
-
-
-  catch (error) {
+  } catch (error) {
 
     console.error(error);
 
     toast(error.message);
 
   }
+
 }
 
 
@@ -473,71 +344,46 @@ async function loadExpenseParticipants() {
 
   expenseParticipants = {};
 
-
   if (!expenses.length) {
     return;
   }
 
+  const ids = expenses
+    .map(e => e.id)
+    .join(",");
 
-  const ids =
-    expenses
-      .map(e => e.id)
-      .join(",");
-
-
-  const rows =
-    await api(
-      `/rest/v1/expense_participants?expense_id=in.(${ids})&select=expense_id,person_id`
-    );
-
+  const rows = await api(
+    `/rest/v1/expense_participants?expense_id=in.(${ids})&select=expense_id,person_id`
+  );
 
   rows.forEach(row => {
 
-    if (
-      !expenseParticipants[
-        row.expense_id
-      ]
-    ) {
+    if (!expenseParticipants[row.expense_id]) {
 
-      expenseParticipants[
-        row.expense_id
-      ] = [];
+      expenseParticipants[row.expense_id] = [];
 
     }
 
-
-    expenseParticipants[
-      row.expense_id
-    ].push(
-      row.person_id
-    );
+    expenseParticipants[row.expense_id]
+      .push(row.person_id);
 
   });
 
 
   /*
-    OLD EXPENSES:
-    If an old expense has no participant rows,
-    everyone participates.
+    Old expenses without participant rows
+    are treated as shared by everyone.
   */
 
   expenses.forEach(expense => {
 
     if (
-      !expenseParticipants[
-        expense.id
-      ] ||
-      !expenseParticipants[
-        expense.id
-      ].length
+      !expenseParticipants[expense.id] ||
+      !expenseParticipants[expense.id].length
     ) {
 
-      expenseParticipants[
-        expense.id
-      ] =
-        people.map(
-          person => person.id
-        );
+      expenseParticipants[expense.id] =
+        people.map(person => person.id);
 
     }
 
@@ -556,7 +402,6 @@ function showHome() {
     .classList
     .remove("hidden");
 
-
   $("tripScreen")
     .classList
     .add("hidden");
@@ -569,7 +414,6 @@ function showTrip() {
   $("homeScreen")
     .classList
     .add("hidden");
-
 
   $("tripScreen")
     .classList
@@ -586,33 +430,25 @@ function renderTrip() {
 
   showTrip();
 
-
-  $("tripTitle")
-    .textContent =
+  $("tripTitle").textContent =
     trip.name;
 
-
-  $("tripLink")
-    .textContent =
+  $("tripLink").textContent =
     window.location.href;
-
 
   populatePayers();
 
-
   renderExpenseParticipantSelector();
-
 
   renderMemberSelector();
 
-
   renderExpenses();
 
-renderTripSummary();
+  renderTripSummary();
 
-renderBalances();
+  renderBalances();
 
-renderWhoOwesWhom();
+  renderWhoOwesWhom();
 
 }
 
@@ -632,7 +468,6 @@ function renderMemberSelector() {
           participantId
       );
 
-
     if (existing) {
 
       hideMemberSelector();
@@ -640,22 +475,19 @@ function renderMemberSelector() {
       return;
     }
 
-
     participantId = null;
-    participantToken = null;
 
+    participantToken = null;
 
     localStorage.removeItem(
       `nls_participant_${tripId}`
     );
-
 
     localStorage.removeItem(
       `nls_participant_id_${tripId}`
     );
 
   }
-
 
   showMemberSelector();
 
@@ -666,7 +498,6 @@ function showMemberSelector() {
 
   let box =
     $("memberSelector");
-
 
   if (!box) {
 
@@ -681,7 +512,6 @@ function showMemberSelector() {
 
     box.style.marginBottom =
       "16px";
-
 
     $("tripScreen")
       .insertBefore(
@@ -747,9 +577,7 @@ function showMemberSelector() {
                 "
               >
 
-                ${escapeHtml(
-                  person.name
-                )}
+                ${escapeHtml(person.name)}
 
               </button>
 
@@ -770,7 +598,6 @@ function hideMemberSelector() {
   const box =
     $("memberSelector");
 
-
   if (box) {
     box.remove();
   }
@@ -782,9 +609,7 @@ function hideMemberSelector() {
    SELECT MEMBER
 ===================================================== */
 
-async function selectMember(
-  personId
-) {
+async function selectMember(personId) {
 
   const person =
     people.find(
@@ -792,7 +617,6 @@ async function selectMember(
         String(p.id) ===
         String(personId)
     );
-
 
   if (!person) {
 
@@ -807,12 +631,9 @@ async function selectMember(
       ".member-choice"
     );
 
-
-  buttons.forEach(
-    button => {
-      button.disabled = true;
-    }
-  );
+  buttons.forEach(button => {
+    button.disabled = true;
+  });
 
 
   try {
@@ -837,19 +658,17 @@ async function selectMember(
         : result;
 
 
-    if (
-      !participant?.participant_token
-    ) {
+    if (!participant?.participant_token) {
 
       throw new Error(
         "Could not select this member."
       );
+
     }
 
 
     participantToken =
       participant.participant_token;
-
 
     participantId =
       participant.participant_id;
@@ -859,7 +678,6 @@ async function selectMember(
       `nls_participant_${tripId}`,
       participantToken
     );
-
 
     localStorage.setItem(
       `nls_participant_id_${tripId}`,
@@ -886,12 +704,9 @@ async function selectMember(
 
     toast(error.message);
 
-
-    buttons.forEach(
-      button => {
-        button.disabled = false;
-      }
-    );
+    buttons.forEach(button => {
+      button.disabled = false;
+    });
 
   }
 
@@ -904,19 +719,25 @@ async function selectMember(
 
 function populatePayers() {
 
-  const oldSelect = $("expensePaidBy");
+  const oldSelect =
+    $("expensePaidBy");
 
   if (!oldSelect) {
     return;
   }
 
-  let box = $("expensePayersBox");
+
+  let box =
+    $("expensePayersBox");
+
 
   if (!box) {
 
-    box = document.createElement("div");
+    box =
+      document.createElement("div");
 
-    box.id = "expensePayersBox";
+    box.id =
+      "expensePayersBox";
 
     box.style.cssText = `
       margin-top:16px;
@@ -926,14 +747,19 @@ function populatePayers() {
       background:#fafbfe;
     `;
 
-    oldSelect.parentNode.parentNode.insertBefore(
-      box,
-      oldSelect.parentNode
-    );
+
+    oldSelect.parentNode.parentNode
+      .insertBefore(
+        box,
+        oldSelect.parentNode
+      );
 
   }
 
-  oldSelect.parentNode.style.display = "none";
+
+  oldSelect.parentNode.style.display =
+    "none";
+
 
   box.innerHTML = `
 
@@ -953,7 +779,8 @@ function populatePayers() {
       Select everyone who paid and enter their amount.
     </div>
 
-    <div id="payerRows"
+    <div
+      id="payerRows"
       style="
         display:flex;
         flex-direction:column;
@@ -963,11 +790,16 @@ function populatePayers() {
 
   `;
 
-  const rows = $("payerRows");
+
+  const rows =
+    $("payerRows");
+
 
   people.forEach(person => {
 
-    const row = document.createElement("div");
+    const row =
+      document.createElement("div");
+
 
     row.style.cssText = `
       display:grid;
@@ -975,6 +807,7 @@ function populatePayers() {
       gap:8px;
       align-items:center;
     `;
+
 
     row.innerHTML = `
 
@@ -1006,6 +839,7 @@ function populatePayers() {
 
       </label>
 
+
       <input
         type="number"
         class="payer-amount"
@@ -1022,6 +856,7 @@ function populatePayers() {
       >
 
     `;
+
 
     rows.appendChild(row);
 
@@ -1041,10 +876,12 @@ function populatePayers() {
               `.payer-amount[data-person-id="${checkbox.value}"]`
             );
 
+
           if (amountInput) {
 
             amountInput.disabled =
               !checkbox.checked;
+
 
             if (!checkbox.checked) {
               amountInput.value = "";
@@ -1058,49 +895,6 @@ function populatePayers() {
     });
 
 }
-
-
-  select.innerHTML = "";
-
-
-  people.forEach(
-    person => {
-
-      const option =
-        document.createElement(
-          "option"
-        );
-
-
-      option.value =
-        person.id;
-
-
-      option.textContent =
-        person.name;
-
-
-      if (
-        participantId &&
-        String(
-          person.participant_id
-        ) ===
-        String(participantId)
-      ) {
-
-        option.selected = true;
-
-      }
-
-
-      select.appendChild(option);
-
-    }
-  );
-
-}
-
-
 /* =====================================================
    EXPENSE PARTICIPANT UI
 ===================================================== */
@@ -1119,7 +913,6 @@ function renderExpenseParticipantSelector() {
     box.id =
       "expenseParticipantsBox";
 
-
     box.style.cssText = `
       margin-top:16px;
       padding:14px;
@@ -1133,11 +926,10 @@ function renderExpenseParticipantSelector() {
       $("addExpenseBtn");
 
 
-    button.parentNode
-      .insertBefore(
-        box,
-        button
-      );
+    button.parentNode.insertBefore(
+      box,
+      button
+    );
 
   }
 
@@ -1227,8 +1019,7 @@ function renderExpenseParticipantSelector() {
         flex-direction:column;
         gap:8px;
       "
-    >
-    </div>
+    ></div>
 
   `;
 
@@ -1237,51 +1028,49 @@ function renderExpenseParticipantSelector() {
     $("expenseParticipantList");
 
 
-  people.forEach(
-    person => {
+  people.forEach(person => {
 
-      const label =
-        document.createElement("label");
-
-
-      label.style.cssText = `
-        display:flex;
-        align-items:center;
-        gap:10px;
-        min-height:42px;
-        padding:0 10px;
-        border-radius:12px;
-        background:white;
-        border:1px solid #eef0f4;
-        font-weight:600;
-        cursor:pointer;
-      `;
+    const label =
+      document.createElement("label");
 
 
-      label.innerHTML = `
-
-        <input
-          type="checkbox"
-          class="expense-participant"
-          value="${escapeHtml(person.id)}"
-          checked
-          style="
-            width:18px;
-            height:18px;
-          "
-        >
-
-        <span>
-          ${escapeHtml(person.name)}
-        </span>
-
-      `;
+    label.style.cssText = `
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:42px;
+      padding:0 10px;
+      border-radius:12px;
+      background:white;
+      border:1px solid #eef0f4;
+      font-weight:600;
+      cursor:pointer;
+    `;
 
 
-      list.appendChild(label);
+    label.innerHTML = `
 
-    }
-  );
+      <input
+        type="checkbox"
+        class="expense-participant"
+        value="${escapeHtml(person.id)}"
+        checked
+        style="
+          width:18px;
+          height:18px;
+        "
+      >
+
+      <span>
+        ${escapeHtml(person.name)}
+      </span>
+
+    `;
+
+
+    list.appendChild(label);
+
+  });
 
 
   function updateCount() {
@@ -1310,20 +1099,18 @@ function renderExpenseParticipantSelector() {
     .querySelectorAll(
       ".expense-participant"
     )
-    .forEach(
-      input => {
+    .forEach(input => {
 
-        input.addEventListener(
-          "change",
-          updateCount
-        );
+      input.addEventListener(
+        "change",
+        updateCount
+      );
 
-      }
-    );
+    });
 
 
-  $("selectAllParticipants")
-    .onclick = () => {
+  $("selectAllParticipants").onclick =
+    () => {
 
       list
         .querySelectorAll(
@@ -1334,14 +1121,13 @@ function renderExpenseParticipantSelector() {
             input.checked = true
         );
 
-
       updateCount();
 
     };
 
 
-  $("clearAllParticipants")
-    .onclick = () => {
+  $("clearAllParticipants").onclick =
+    () => {
 
       list
         .querySelectorAll(
@@ -1351,7 +1137,6 @@ function renderExpenseParticipantSelector() {
           input =>
             input.checked = false
         );
-
 
       updateCount();
 
@@ -1366,8 +1151,7 @@ function getSelectedExpenseParticipants() {
     document.querySelectorAll(
       ".expense-participant:checked"
     )
-  )
-  .map(
+  ).map(
     input =>
       input.value
   );
@@ -1410,14 +1194,17 @@ async function saveExpenseParticipants(
         JSON.stringify(
           personIds.map(
             personId => ({
+
               expense_id:
                 expenseId,
 
               person_id:
                 personId
+
             })
           )
         )
+
     }
   );
 
@@ -1432,7 +1219,9 @@ async function addExpense() {
 
   if (!participantToken) {
 
-    toast("Please select your name first.");
+    toast(
+      "Please select your name first."
+    );
 
     showMemberSelector();
 
@@ -1441,11 +1230,15 @@ async function addExpense() {
 
 
   const description =
-    $("expenseDescription").value.trim();
+    $("expenseDescription")
+      .value
+      .trim();
 
 
   const amount =
-    Number($("expenseAmount").value);
+    Number(
+      $("expenseAmount").value
+    );
 
 
   const expenseDate =
@@ -1454,15 +1247,22 @@ async function addExpense() {
 
   if (!description) {
 
-    toast("Enter a description.");
+    toast(
+      "Enter a description."
+    );
 
     return;
   }
 
 
-  if (!amount || amount <= 0) {
+  if (
+    !amount ||
+    amount <= 0
+  ) {
 
-    toast("Enter a valid amount.");
+    toast(
+      "Enter a valid amount."
+    );
 
     return;
   }
@@ -1470,16 +1270,13 @@ async function addExpense() {
 
   if (!expenseDate) {
 
-    toast("Please select a date.");
+    toast(
+      "Please select a date."
+    );
 
     return;
   }
 
-
-  /*
-    Get everyone who paid
-    and the amount they paid.
-  */
 
   const payerCheckboxes =
     Array.from(
@@ -1491,7 +1288,9 @@ async function addExpense() {
 
   if (!payerCheckboxes.length) {
 
-    toast("Select at least one person who paid.");
+    toast(
+      "Select at least one person who paid."
+    );
 
     return;
   }
@@ -1515,9 +1314,7 @@ async function addExpense() {
         );
 
 
-      if (
-        payerAmount > 0
-      ) {
+      if (payerAmount > 0) {
 
         payments.push({
 
@@ -1545,16 +1342,10 @@ async function addExpense() {
   }
 
 
-  /*
-    Make sure payer amounts
-    exactly equal expense total.
-  */
-
   const paymentTotal =
     payments.reduce(
       (sum, payment) =>
-        sum +
-        payment.amount,
+        sum + payment.amount,
       0
     );
 
@@ -1572,10 +1363,6 @@ async function addExpense() {
     return;
   }
 
-
-  /*
-    Participants who share this expense.
-  */
 
   const selectedParticipants =
     getSelectedExpenseParticipants();
@@ -1605,75 +1392,49 @@ async function addExpense() {
 
   try {
 
-    /*
-      We still create the expense using
-      the existing secure RPC.
-
-      For compatibility, the first payer
-      is sent as paid_by.
-
-      The real payment split is saved
-      separately in expense_payments.
-    */
-
     const primaryPayer =
       payments[0].person_id;
 
 
-    const result =
+    await api(
+      "/rest/v1/rpc/add_expense_secure",
+      {
+        method: "POST",
+
+        body: JSON.stringify({
+
+          p_trip_id:
+            tripId,
+
+          p_participant_token:
+            participantToken,
+
+          p_description:
+            description,
+
+          p_amount:
+            amount,
+
+          p_paid_by:
+            primaryPayer,
+
+          p_expense_date:
+            expenseDate
+
+        })
+
+      }
+    );
+
+
+    const latest =
       await api(
-        "/rest/v1/rpc/add_expense_secure",
-        {
-          method: "POST",
-
-          body: JSON.stringify({
-
-            p_trip_id:
-              tripId,
-
-            p_participant_token:
-              participantToken,
-
-            p_description:
-              description,
-
-            p_amount:
-              amount,
-
-            p_paid_by:
-              primaryPayer,
-
-            p_expense_date:
-              expenseDate
-
-          })
-        }
+        `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&created_by_participant_id=eq.${encodeURIComponent(participantId)}&description=eq.${encodeURIComponent(description)}&amount=eq.${encodeURIComponent(amount)}&select=id,created_at&order=created_at.desc&limit=1`
       );
 
 
-    let expenseId =
-      Array.isArray(result)
-        ? result[0]?.id
-        : result?.id;
-
-
-    /*
-      If the RPC returns no ID,
-      find the newly-created expense.
-    */
-
-    if (!expenseId) {
-
-      const latest =
-        await api(
-          `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&created_by_participant_id=eq.${encodeURIComponent(participantId)}&description=eq.${encodeURIComponent(description)}&amount=eq.${encodeURIComponent(amount)}&select=id,created_at&order=created_at.desc&limit=1`
-        );
-
-
-      expenseId =
-        latest?.[0]?.id;
-
-    }
+    const expenseId =
+      latest?.[0]?.id;
 
 
     if (!expenseId) {
@@ -1685,19 +1446,11 @@ async function addExpense() {
     }
 
 
-    /*
-      Save who shares this expense.
-    */
-
     await saveExpenseParticipants(
       expenseId,
       selectedParticipants
     );
 
-
-    /*
-      Save each person's actual payment.
-    */
 
     await api(
       "/rest/v1/expense_payments",
@@ -1731,10 +1484,6 @@ async function addExpense() {
     );
 
 
-    /*
-      Clear form.
-    */
-
     $("expenseDescription")
       .value = "";
 
@@ -1750,7 +1499,8 @@ async function addExpense() {
       .forEach(
         checkbox => {
 
-          checkbox.checked = false;
+          checkbox.checked =
+            false;
 
         }
       );
@@ -1763,9 +1513,11 @@ async function addExpense() {
       .forEach(
         input => {
 
-          input.value = "";
+          input.value =
+            "";
 
-          input.disabled = true;
+          input.disabled =
+            true;
 
         }
       );
@@ -1795,224 +1547,16 @@ async function addExpense() {
 
   finally {
 
-    button.disabled = false;
+    button.disabled =
+      false;
 
     button.textContent =
       "Add Expense";
+  
 
   }
 
 }
-
-
-  const description =
-    $("expenseDescription")
-      .value
-      .trim();
-
-
-  const amount =
-    Number(
-      $("expenseAmount")
-        .value
-    );
-const expenseDate =
-  $("expenseDate")
-    .value;
-  if (!expenseDate) {
-
-  toast(
-    "Please select a date."
-  );
-
-  return;
-
-}
-
-  const paidBy =
-    $("expensePaidBy")
-      .value;
-
-
-  const selectedParticipants =
-    getSelectedExpenseParticipants();
-
-
-  if (!description) {
-
-    toast(
-      "Enter a description."
-    );
-
-    return;
-  }
-
-
-  if (
-    !amount ||
-    amount <= 0
-  ) {
-
-    toast(
-      "Enter a valid amount."
-    );
-
-    return;
-  }
-
-
-  if (!paidBy) {
-
-    toast(
-      "Select who paid."
-    );
-
-    return;
-  }
-
-
-  if (
-    !selectedParticipants.length
-  ) {
-
-    toast(
-      "Select at least one participant."
-    );
-
-    return;
-  }
-
-
-  const button =
-    $("addExpenseBtn");
-
-
-  button.disabled = true;
-
-  button.textContent =
-    "Adding...";
-
-
-  try {
-
-    const result =
-      await api(
-        "/rest/v1/rpc/add_expense_secure",
-        {
-          method: "POST",
-
-          body: JSON.stringify({
-
-            p_trip_id:
-              tripId,
-
-            p_participant_token:
-              participantToken,
-
-            p_description:
-              description,
-
-            p_amount:
-  amount,
-
-p_expense_date:
-  expenseDate,
-
-p_paid_by:
-  paidBy
-
-          })
-        }
-      );
-
-
-    let expenseId =
-      Array.isArray(result)
-        ? result[0]?.id
-        : result?.id;
-
-
-    if (
-      !expenseId &&
-      Array.isArray(result)
-    ) {
-
-      expenseId =
-        result[0]?.expense_id;
-
-    }
-
-
-    /*
-      If the RPC doesn't return the
-      expense ID, find the newly-created
-      expense.
-    */
-
-    if (!expenseId) {
-
-      const latest =
-        await api(
-          `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&created_by_participant_id=eq.${encodeURIComponent(participantId)}&description=eq.${encodeURIComponent(description)}&amount=eq.${encodeURIComponent(amount)}&select=id,created_at&order=created_at.desc&limit=1`
-        );
-
-
-      expenseId =
-        latest?.[0]?.id;
-
-    }
-
-
-    if (!expenseId) {
-
-      throw new Error(
-        "Expense was added, but its participant list could not be saved."
-      );
-
-    }
-
-
-    await saveExpenseParticipants(
-      expenseId,
-      selectedParticipants
-    );
-
-
-    $("expenseDescription")
-      .value = "";
-
-
-    $("expenseAmount")
-      .value = "";
-
-
-    await loadTrip();
-
-
-    toast(
-      "Expense added ✓"
-    );
-
-  }
-
-
-  catch (error) {
-
-    console.error(error);
-
-    toast(error.message);
-
-  }
-
-
-  button.disabled = false;
-
-  button.textContent =
-    "Add Expense";
-
-}
-
-
 /* =====================================================
    EXPENSES
 ===================================================== */
@@ -2021,7 +1565,6 @@ function renderExpenses() {
 
   const container =
     $("expensesList");
-
 
   container.innerHTML = "";
 
@@ -2069,179 +1612,172 @@ function renderExpenses() {
   }
 
 
-  expenses.forEach(
-    expense => {
+  expenses.forEach(expense => {
 
-      const payer =
-        people.find(
-          person =>
-            String(person.id) ===
-            String(expense.paid_by)
-        );
-
-
-      const creator =
-        people.find(
-          person =>
-            String(
-              person.participant_id
-            ) ===
-            String(
-              expense.created_by_participant_id
-            )
-        );
+    const payer =
+      people.find(
+        person =>
+          String(person.id) ===
+          String(expense.paid_by)
+      );
 
 
-      const ids =
-        expenseParticipants[
-          expense.id
-        ] ||
-        people.map(
-          person =>
-            person.id
-        );
-
-
-      const names =
-        people
-          .filter(
-            person =>
-              ids.some(
-                id =>
-                  String(id) ===
-                  String(person.id)
-              )
+    const creator =
+      people.find(
+        person =>
+          String(person.participant_id) ===
+          String(
+            expense.created_by_participant_id
           )
-          .map(
-            person =>
-              person.name
-          );
+      );
 
 
-      const item =
-        document.createElement(
-          "div"
+    const ids =
+      expenseParticipants[expense.id] ||
+      people.map(
+        person =>
+          person.id
+      );
+
+
+    const names =
+      people
+        .filter(
+          person =>
+            ids.some(
+              id =>
+                String(id) ===
+                String(person.id)
+            )
+        )
+        .map(
+          person =>
+            person.name
         );
 
 
-      item.className =
-        "expense";
+    const item =
+      document.createElement("div");
 
 
-      const isMine =
-        participantId &&
-        String(
-          expense.created_by_participant_id
-        ) ===
-        String(participantId);
+    item.className =
+      "expense";
 
 
-      let deleteButton = "";
+    const isMine =
+      participantId &&
+      String(
+        expense.created_by_participant_id
+      ) ===
+      String(participantId);
 
 
-      if (isMine) {
-
-        deleteButton = `
-
-          <button
-            class="danger"
-            style="
-              width:auto;
-              padding:8px 12px;
-              margin-top:10px;
-            "
-            onclick="
-              deleteOwnExpense('${expense.id}')
-            "
-          >
-            Delete
-          </button>
-
-        `;
-
-      }
+    let deleteButton = "";
 
 
-      item.innerHTML = `
+    if (isMine) {
 
-        <div class="expense-top">
+      deleteButton = `
 
-          <div>
-
-            <div class="expense-name">
-
-              ${escapeHtml(
-                expense.description
-              )}
-
-            </div>
-
-
-            <div class="expense-meta">
-
-  ${escapeHtml(
-    expense.expense_date
-  )}
-
-  • Paid by
-  ${escapeHtml(
-    payer?.name ||
-    "Unknown"
-  )}
-
-  ${
-    creator
-      ? ` • Added by ${escapeHtml(
-          creator.name
-        )}`
-      : ""
-  }
-
-</div>
-
-          </div>
-
-
-          <div class="expense-amount">
-
-            ₹${Number(
-              expense.amount
-            ).toFixed(2)}
-
-          </div>
-
-        </div>
-
-
-        <div
+        <button
+          class="danger"
           style="
-            margin-top:9px;
-            font-size:12px;
-            color:#737887;
-            line-height:1.45;
+            width:auto;
+            padding:8px 12px;
+            margin-top:10px;
+          "
+          onclick="
+            deleteOwnExpense('${expense.id}')
           "
         >
-
-          <strong>
-            Split between:
-          </strong>
-
-          ${escapeHtml(
-            names.join(", ")
-          )}
-
-        </div>
-
-
-        ${deleteButton}
+          Delete
+        </button>
 
       `;
 
-
-      container.appendChild(item);
-
     }
-  );
+
+
+    item.innerHTML = `
+
+      <div class="expense-top">
+
+        <div>
+
+          <div class="expense-name">
+
+            ${escapeHtml(
+              expense.description
+            )}
+
+          </div>
+
+
+          <div class="expense-meta">
+
+            ${escapeHtml(
+              expense.expense_date
+            )}
+
+            • Paid by
+
+            ${escapeHtml(
+              payer?.name ||
+              "Unknown"
+            )}
+
+            ${
+              creator
+                ? ` • Added by ${escapeHtml(
+                    creator.name
+                  )}`
+                : ""
+            }
+
+          </div>
+
+        </div>
+
+
+        <div class="expense-amount">
+
+          ₹${Number(
+            expense.amount
+          ).toFixed(2)}
+
+        </div>
+
+      </div>
+
+
+      <div
+        style="
+          margin-top:9px;
+          font-size:12px;
+          color:#737887;
+          line-height:1.45;
+        "
+      >
+
+        <strong>
+          Split between:
+        </strong>
+
+        ${escapeHtml(
+          names.join(", ")
+        )}
+
+      </div>
+
+
+      ${deleteButton}
+
+    `;
+
+
+    container.appendChild(item);
+
+  });
 
 }
 
@@ -2250,9 +1786,7 @@ function renderExpenses() {
    DELETE EXPENSE
 ===================================================== */
 
-async function deleteOwnExpense(
-  expenseId
-) {
+async function deleteOwnExpense(expenseId) {
 
   if (!participantToken) {
 
@@ -2316,12 +1850,14 @@ async function deleteOwnExpense(
 
 
 /* =====================================================
-   BALANCES
+   TRIP SUMMARY
 ===================================================== */
+
 function renderTripSummary() {
 
   let card =
     $("tripSummaryCard");
+
 
   if (!card) {
 
@@ -2337,10 +1873,12 @@ function renderTripSummary() {
     card.style.marginBottom =
       "16px";
 
+
     const balancesCard =
       document.querySelector(
         ".balances-card"
       );
+
 
     if (
       balancesCard &&
@@ -2366,7 +1904,9 @@ function renderTripSummary() {
     expenses.reduce(
       (sum, expense) =>
         sum +
-        Number(expense.amount || 0),
+        Number(
+          expense.amount || 0
+        ),
       0
     );
 
@@ -2517,6 +2057,12 @@ function renderTripSummary() {
   `;
 
 }
+
+
+/* =====================================================
+   BALANCES
+===================================================== */
+
 function renderBalances() {
 
   const container =
@@ -2535,226 +2081,157 @@ function renderBalances() {
   const owed = {};
 
 
-  people.forEach(
-    person => {
+  people.forEach(person => {
 
-      paid[person.id] = 0;
+    paid[person.id] = 0;
+    owed[person.id] = 0;
 
-      owed[person.id] = 0;
+  });
+
+
+  expenses.forEach(expense => {
+
+    const amount =
+      Number(
+        expense.amount
+      ) || 0;
+
+
+    if (
+      paid[expense.paid_by] !==
+      undefined
+    ) {
+
+      paid[expense.paid_by] +=
+        amount;
 
     }
-  );
 
 
-  expenses.forEach(
-    expense => {
+    const ids =
+      expenseParticipants[
+        expense.id
+      ]?.length
 
-      const amount =
-        Number(
-          expense.amount
-        );
+        ? expenseParticipants[
+            expense.id
+          ]
 
-
-      /*
-        Money actually paid.
-      */
-
-      if (
-        paid[
-          expense.paid_by
-        ] !== undefined
-      ) {
-
-        paid[
-          expense.paid_by
-        ] += amount;
-
-      }
+        : people.map(
+            person =>
+              person.id
+          );
 
 
-      /*
-        People who owe this expense.
-      */
-
-      const ids =
-        expenseParticipants[
-          expense.id
-        ]?.length
-
-          ? expenseParticipants[
-              expense.id
-            ]
-
-          : people.map(
-              person =>
-                person.id
-            );
-
-
-      const validIds =
-        ids.filter(
-          id =>
-            owed[id] !== undefined
-        );
-
-
-      if (!validIds.length) {
-        return;
-      }
-
-
-      const share =
-        amount /
-        validIds.length;
-
-
-      validIds.forEach(
-        id => {
-
-          owed[id] +=
-            share;
-
-        }
+    const validIds =
+      ids.filter(
+        id =>
+          owed[id] !==
+          undefined
       );
 
+
+    if (!validIds.length) {
+      return;
     }
-  );
 
 
-  const total =
-    expenses.reduce(
-      (
-        sum,
-        expense
-      ) =>
-        sum +
-        Number(
-          expense.amount
-        ),
-      0
-    );
+    const share =
+      amount /
+      validIds.length;
 
 
-  people.forEach(
-    person => {
+    validIds.forEach(id => {
 
-      const balance =
-        paid[person.id] -
-        owed[person.id];
+      owed[id] +=
+        share;
 
+    });
 
-      let status;
-
-
-      if (
-        balance > 0.005
-      ) {
-
-        status = `
-
-          <span class="positive">
-            gets ₹${balance.toFixed(2)}
-          </span>
-
-        `;
-
-      }
+  });
 
 
-      else if (
-        balance < -0.005
-      ) {
+  people.forEach(person => {
 
-        status = `
-
-          <span class="negative">
-            owes ₹${Math.abs(
-              balance
-            ).toFixed(2)}
-          </span>
-
-        `;
-
-      }
+    const balance =
+      paid[person.id] -
+      owed[person.id];
 
 
-      else {
-
-        status = `
-
-          <span>
-            settled
-          </span>
-
-        `;
-
-      }
+    let status;
 
 
-      const row =
-        document.createElement(
-          "div"
-        );
+    if (balance > 0.005) {
 
+      status = `
 
-      row.className =
-        "balance";
-
-
-      row.innerHTML = `
-
-        <div class="balance-row">
-
-          <strong>
-            ${escapeHtml(
-              person.name
-            )}
-          </strong>
-
-          ${status}
-
-        </div>
+        <span class="positive">
+          gets ₹${balance.toFixed(2)}
+        </span>
 
       `;
 
+    }
 
-      container.appendChild(
-        row
-      );
+    else if (balance < -0.005) {
+
+      status = `
+
+        <span class="negative">
+          owes ₹${Math.abs(
+            balance
+          ).toFixed(2)}
+        </span>
+
+      `;
 
     }
-  );
+
+    else {
+
+      status = `
+
+        <span>
+          settled
+        </span>
+
+      `;
+
+    }
 
 
-  if (total > 0) {
-
-    const summary =
+    const row =
       document.createElement(
-        "p"
+        "div"
       );
 
 
-    summary.className =
-      "small";
+    row.className =
+      "balance";
 
 
-    summary.style.marginTop =
-      "12px";
+    row.innerHTML = `
+
+      <div class="balance-row">
+
+        <strong>
+          ${escapeHtml(
+            person.name
+          )}
+        </strong>
+
+        ${status}
+
+      </div>
+
+    `;
 
 
-    summary.textContent =
-      `Total spent: ₹${total.toFixed(2)} • Shares are calculated per expense`;
+    container.appendChild(row);
 
-
-    container.appendChild(
-      summary
-    );
-
-  }
+  });
 
 }
-
-
 /* =====================================================
    WHO OWES WHOM
 ===================================================== */
@@ -2790,11 +2267,6 @@ function calculateNetBalances() {
     }
 
 
-    /*
-      The payer is owed the full amount
-      they actually paid.
-    */
-
     net[payerId] +=
       amount;
 
@@ -2822,16 +2294,9 @@ function calculateNetBalances() {
 
 
     if (!validIds.length) {
-
       return;
-
     }
 
-
-    /*
-      Everyone selected for this expense
-      owes an equal share.
-    */
 
     const share =
       amount /
@@ -2853,15 +2318,9 @@ function calculateNetBalances() {
 }
 
 
-/*
-  Convert net balances into actual payments.
-
-  Positive balance:
-    person should RECEIVE money.
-
-  Negative balance:
-    person needs to PAY money.
-*/
+/* =====================================================
+   CALCULATE SETTLEMENTS
+===================================================== */
 
 function calculateSettlements() {
 
@@ -2874,11 +2333,6 @@ function calculateSettlements() {
 
 
   people.forEach(person => {
-
-    /*
-      Work in paise to avoid floating-point
-      errors such as 399.999999999.
-    */
 
     const balance =
       Math.round(
@@ -2923,12 +2377,6 @@ function calculateSettlements() {
 
   });
 
-
-  /*
-    Largest balances first.
-    This generally reduces the number
-    of transactions required.
-  */
 
   creditors.sort(
     (a, b) =>
@@ -3032,22 +2480,15 @@ function calculateSettlements() {
 }
 
 
-/*
-  Render the "Who owes whom?" card.
-
-  The card is created automatically, so
-  you do NOT need to change your HTML.
-*/
+/* =====================================================
+   RENDER WHO OWES WHOM
+===================================================== */
 
 function renderWhoOwesWhom() {
 
   let card =
     $("whoOwesWhomCard");
 
-
-  /*
-    Create the card only once.
-  */
 
   if (!card) {
 
@@ -3088,13 +2529,10 @@ function renderWhoOwesWhom() {
 
     }
 
-
     else {
 
       $("tripScreen")
-        .appendChild(
-          card
-        );
+        .appendChild(card);
 
     }
 
@@ -3147,13 +2585,7 @@ function renderWhoOwesWhom() {
     $("settlementsList");
 
 
-  /*
-    No payments are necessary.
-  */
-
-  if (
-    !settlements.length
-  ) {
+  if (!settlements.length) {
 
     list.innerHTML = `
 
@@ -3179,10 +2611,6 @@ function renderWhoOwesWhom() {
 
   }
 
-
-  /*
-    Render every required payment.
-  */
 
   settlements.forEach(
     settlement => {
@@ -3212,11 +2640,7 @@ function renderWhoOwesWhom() {
           "
         >
 
-          <div
-            style="
-              min-width:0;
-            "
-          >
+          <div>
 
             <div
               style="
@@ -3280,9 +2704,7 @@ function renderWhoOwesWhom() {
       `;
 
 
-      list.appendChild(
-        row
-      );
+      list.appendChild(row);
 
     }
   );
@@ -3302,9 +2724,7 @@ async function shareTrip() {
 
   try {
 
-    if (
-      navigator.share
-    ) {
+    if (navigator.share) {
 
       await navigator.share({
 
@@ -3320,7 +2740,6 @@ async function shareTrip() {
       });
 
     }
-
 
     else {
 
@@ -3347,44 +2766,66 @@ async function shareTrip() {
       toast(
         "Unable to share the link."
       );
-
     }
 
   }
 
 }
-
-
 /* =====================================================
    BUTTONS
 ===================================================== */
 
-$("addPersonBtn")
-  .addEventListener(
+const addPersonBtn =
+  $("addPersonBtn");
+
+const createTripBtn =
+  $("createTripBtn");
+
+const addExpenseBtn =
+  $("addExpenseBtn");
+
+const shareBtn =
+  $("shareBtn");
+
+
+if (addPersonBtn) {
+
+  addPersonBtn.addEventListener(
     "click",
     addPerson
   );
 
+}
 
-$("createTripBtn")
-  .addEventListener(
+
+if (createTripBtn) {
+
+  createTripBtn.addEventListener(
     "click",
     createTrip
   );
 
+}
 
-$("addExpenseBtn")
-  .addEventListener(
+
+if (addExpenseBtn) {
+
+  addExpenseBtn.addEventListener(
     "click",
     addExpense
   );
 
+}
 
-$("shareBtn")
-  .addEventListener(
+
+if (shareBtn) {
+
+  shareBtn.addEventListener(
     "click",
     shareTrip
   );
+
+}
 
 
 /* =====================================================
@@ -3396,7 +2837,7 @@ createPersonField();
 
 
 /* =====================================================
-   START
+   START APP
 ===================================================== */
 
 if (tripId) {
@@ -3414,7 +2855,6 @@ if (tripId) {
   loadTrip();
 
 }
-
 
 else {
 
