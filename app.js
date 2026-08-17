@@ -904,13 +904,160 @@ async function selectMember(
 
 function populatePayers() {
 
-  const select =
-    $("expensePaidBy");
+  const oldSelect = $("expensePaidBy");
 
-
-  if (!select) {
+  if (!oldSelect) {
     return;
   }
+
+  let box = $("expensePayersBox");
+
+  if (!box) {
+
+    box = document.createElement("div");
+
+    box.id = "expensePayersBox";
+
+    box.style.cssText = `
+      margin-top:16px;
+      padding:14px;
+      border:1px solid #e8eaf0;
+      border-radius:16px;
+      background:#fafbfe;
+    `;
+
+    oldSelect.parentNode.parentNode.insertBefore(
+      box,
+      oldSelect.parentNode
+    );
+
+  }
+
+  oldSelect.parentNode.style.display = "none";
+
+  box.innerHTML = `
+
+    <div style="
+      font-weight:800;
+      font-size:14px;
+      margin-bottom:10px;
+    ">
+      Paid by
+    </div>
+
+    <div style="
+      font-size:12px;
+      color:#737887;
+      margin-bottom:10px;
+    ">
+      Select everyone who paid and enter their amount.
+    </div>
+
+    <div id="payerRows"
+      style="
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+      "
+    ></div>
+
+  `;
+
+  const rows = $("payerRows");
+
+  people.forEach(person => {
+
+    const row = document.createElement("div");
+
+    row.style.cssText = `
+      display:grid;
+      grid-template-columns:1fr 110px;
+      gap:8px;
+      align-items:center;
+    `;
+
+    row.innerHTML = `
+
+      <label style="
+        display:flex;
+        align-items:center;
+        gap:8px;
+        min-height:44px;
+        padding:0 10px;
+        border-radius:12px;
+        background:white;
+        border:1px solid #eef0f4;
+        font-weight:600;
+      ">
+
+        <input
+          type="checkbox"
+          class="expense-payer"
+          value="${escapeHtml(person.id)}"
+          style="
+            width:18px;
+            height:18px;
+          "
+        >
+
+        <span>
+          ${escapeHtml(person.name)}
+        </span>
+
+      </label>
+
+      <input
+        type="number"
+        class="payer-amount"
+        data-person-id="${escapeHtml(person.id)}"
+        min="0"
+        step="0.01"
+        inputmode="decimal"
+        placeholder="₹ Amount"
+        disabled
+        style="
+          width:100%;
+          box-sizing:border-box;
+        "
+      >
+
+    `;
+
+    rows.appendChild(row);
+
+  });
+
+
+  rows
+    .querySelectorAll(".expense-payer")
+    .forEach(checkbox => {
+
+      checkbox.addEventListener(
+        "change",
+        () => {
+
+          const amountInput =
+            rows.querySelector(
+              `.payer-amount[data-person-id="${checkbox.value}"]`
+            );
+
+          if (amountInput) {
+
+            amountInput.disabled =
+              !checkbox.checked;
+
+            if (!checkbox.checked) {
+              amountInput.value = "";
+            }
+
+          }
+
+        }
+      );
+
+    });
+
+}
 
 
   select.innerHTML = "";
