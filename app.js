@@ -439,11 +439,79 @@ function renderTrip() {
    EXPENSE DATE
 ===================================================== */
 
+/* =====================================================
+   EXPENSE DATE
+===================================================== */
+
 function addExpenseDateField() {
 
-  if ($("expenseDate")) {
+  if ($("expenseDateBox")) {
     return;
   }
+
+  const payerBox = $("expensePayersBox");
+
+  if (!payerBox) {
+    return;
+  }
+
+  const dateBox =
+    document.createElement("div");
+
+  dateBox.id =
+    "expenseDateBox";
+
+  dateBox.style.cssText = `
+    margin-top:16px;
+    margin-bottom:16px;
+    padding:14px;
+    border:1px solid #e8eaf0;
+    border-radius:16px;
+    background:#fafbfe;
+  `;
+
+  dateBox.innerHTML = `
+
+    <div style="
+      font-weight:800;
+      font-size:14px;
+      margin-bottom:8px;
+    ">
+      Date
+    </div>
+
+    <input
+      type="date"
+      id="expenseDate"
+      style="
+        width:100%;
+        box-sizing:border-box;
+        min-height:52px;
+        padding:0 14px;
+        border:1px solid #e3e5eb;
+        border-radius:14px;
+        background:white;
+        font-size:16px;
+        color:#151823;
+      "
+    >
+
+  `;
+
+  payerBox.parentNode.insertBefore(
+    dateBox,
+    payerBox
+  );
+
+
+  const today =
+    new Date()
+      .toISOString()
+      .split("T")[0];
+
+  $("expenseDate").value =
+    today;
+}
 
   const amountInput = $("expenseAmount");
 
