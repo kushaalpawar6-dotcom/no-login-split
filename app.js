@@ -435,7 +435,83 @@ function renderTrip() {
 
   $("tripLink").textContent =
     window.location.href;
+/* =====================================================
+   EXPENSE DATE
+===================================================== */
 
+function addExpenseDateField() {
+
+  if ($("expenseDate")) {
+    return;
+  }
+
+  const amountInput = $("expenseAmount");
+
+  if (!amountInput) {
+    return;
+  }
+
+  const amountRow =
+    amountInput.closest(".form-group") ||
+    amountInput.parentElement;
+
+  const dateBox =
+    document.createElement("div");
+
+  dateBox.id = "expenseDateBox";
+
+  dateBox.style.cssText = `
+    margin-top:16px;
+  `;
+
+  dateBox.innerHTML = `
+
+    <label
+      for="expenseDate"
+      style="
+        display:block;
+        font-weight:700;
+        margin-bottom:8px;
+      "
+    >
+      Date
+    </label>
+
+    <input
+      type="date"
+      id="expenseDate"
+      style="
+        width:100%;
+        box-sizing:border-box;
+        min-height:54px;
+        padding:0 16px;
+        border:1px solid #e3e5eb;
+        border-radius:16px;
+        background:#fafbfe;
+        font-size:17px;
+        color:#151823;
+      "
+    >
+
+  `;
+
+  amountRow.parentNode.insertBefore(
+    dateBox,
+    amountRow.nextSibling
+  );
+
+
+  /* Today's date by default */
+
+  const today =
+    new Date()
+      .toISOString()
+      .split("T")[0];
+
+  $("expenseDate").value =
+    today;
+
+}
   populatePayers();
 
   renderExpenseParticipantSelector();
