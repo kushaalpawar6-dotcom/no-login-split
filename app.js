@@ -1571,7 +1571,7 @@ async function addExpense() {
 
     $("expenseAmount")
       .value = "";
-
+$("expenseDate").value = getLocalToday();
 
     document
       .querySelectorAll(
