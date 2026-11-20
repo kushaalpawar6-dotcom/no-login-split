@@ -536,7 +536,7 @@ function renderTrip() {
 
 }
 
-===================================================== */
+
 
 function renderMemberSelector() {
 
