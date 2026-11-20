@@ -423,43 +423,43 @@ function showTrip() {
 
 
 /* =====================================================
+   
+/* =====================================================
    RENDER TRIP
 ===================================================== */
 
-function renderTrip() {
+function getLocalToday() {
+  const today = new Date();
 
-  showTrip();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
 
-  $("tripTitle").textContent =
-    trip.name;
+  return `${year}-${month}-${day}`;
+}
 
-  $("tripLink").textContent =
-    window.location.href;
-/* =====================================================
-   EXPENSE DATE
-===================================================== */
 
 /* =====================================================
-   EXPENSE DATE
+   EXPENSE DATE FIELD
 ===================================================== */
 
 function addExpenseDateField() {
 
-  if ($("expenseDateBox")) {
+  // Use the date input already present in index.html
+  if ($("expenseDate")) {
+    if (!$("expenseDate").value) {
+      $("expenseDate").value = getLocalToday();
+    }
     return;
   }
 
   const payerBox = $("expensePayersBox");
 
-  if (!payerBox) {
-    return;
-  }
+  if (!payerBox) return;
 
-  const dateBox =
-    document.createElement("div");
+  const dateBox = document.createElement("div");
 
-  dateBox.id =
-    "expenseDateBox";
+  dateBox.id = "expenseDateBox";
 
   dateBox.style.cssText = `
     margin-top:16px;
@@ -471,14 +471,17 @@ function addExpenseDateField() {
   `;
 
   dateBox.innerHTML = `
-
-    <div style="
-      font-weight:800;
-      font-size:14px;
-      margin-bottom:8px;
-    ">
+    <label
+      for="expenseDate"
+      style="
+        display:block;
+        font-weight:800;
+        font-size:14px;
+        margin-bottom:8px;
+      "
+    >
       Date
-    </div>
+    </label>
 
     <input
       type="date"
@@ -495,92 +498,29 @@ function addExpenseDateField() {
         color:#151823;
       "
     >
-
   `;
 
-  payerBox.parentNode.insertBefore(
-    dateBox,
-    payerBox
-  );
+  payerBox.parentNode.insertBefore(dateBox, payerBox);
 
-
-  const today =
-    new Date()
-      .toISOString()
-      .split("T")[0];
-
-  $("expenseDate").value =
-    today;
+  $("expenseDate").value = getLocalToday();
 }
 
-  const amountInput = $("expenseAmount");
 
-  if (!amountInput) {
-    return;
-  }
+/* =====================================================
+   RENDER TRIP
+===================================================== */
 
-  const amountRow =
-    amountInput.closest(".form-group") ||
-    amountInput.parentElement;
+function renderTrip() {
 
-  const dateBox =
-    document.createElement("div");
+  showTrip();
 
-  dateBox.id = "expenseDateBox";
+  $("tripTitle").textContent = trip.name;
 
-  dateBox.style.cssText = `
-    margin-top:16px;
-  `;
+  $("tripLink").textContent = window.location.href;
 
-  dateBox.innerHTML = `
-
-    <label
-      for="expenseDate"
-      style="
-        display:block;
-        font-weight:700;
-        margin-bottom:8px;
-      "
-    >
-      Date
-    </label>
-
-    <input
-      type="date"
-      id="expenseDate"
-      style="
-        width:100%;
-        box-sizing:border-box;
-        min-height:54px;
-        padding:0 16px;
-        border:1px solid #e3e5eb;
-        border-radius:16px;
-        background:#fafbfe;
-        font-size:17px;
-        color:#151823;
-      "
-    >
-
-  `;
-
-  amountRow.parentNode.insertBefore(
-    dateBox,
-    amountRow.nextSibling
-  );
-
-
-  /* Today's date by default */
-
-  const today =
-    new Date()
-      .toISOString()
-      .split("T")[0];
-
-  $("expenseDate").value =
-    today;
-
-}
   populatePayers();
+
+  addExpenseDateField();
 
   renderExpenseParticipantSelector();
 
@@ -596,9 +536,6 @@ function addExpenseDateField() {
 
 }
 
-
-/* =====================================================
-   MEMBER SELECTOR
 ===================================================== */
 
 function renderMemberSelector() {
