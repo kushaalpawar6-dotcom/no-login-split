@@ -329,7 +329,7 @@ async function loadTrip() {
     );
 
     expenses = await api(
-      `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at&order=created_at.asc`
+      `/rest/v1/expense_public?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at,created_by_name&order=created_at.asc`
     );
 
     // Load every contribution so shared payments are reflected correctly.
@@ -1653,6 +1653,19 @@ $("expenseDate").value = getLocalToday();
    EXPENSES
 ===================================================== */
 
+function isCurrentUserExpense(expense) {
+  const currentPerson = people.find(
+    person => String(person.participant_id) === String(participantId)
+  );
+  return Boolean(
+    currentPerson &&
+    expense.created_by_name &&
+    String(currentPerson.name).trim().toLowerCase() ===
+      String(expense.created_by_name).trim().toLowerCase()
+  );
+}
+
+
 function renderExpenses() {
 
   const container =
@@ -1774,12 +1787,7 @@ function renderExpenses() {
       "expense";
 
 
-    const isMine =
-      participantId &&
-      String(
-        expense.created_by_participant_id
-      ) ===
-      String(participantId);
+    const isMine = isCurrentUserExpense(expense);
 
 
     let deleteButton = "";
@@ -1902,8 +1910,7 @@ function editExpense(expenseId) {
   const expense = expenses.find(item => String(item.id) === String(expenseId));
   if (!expense) return;
 
-  const isMine = participantId &&
-    String(expense.created_by_participant_id) === String(participantId);
+  const isMine = isCurrentUserExpense(expense);
   if (!ownerToken && !isMine) {
     toast("You can only edit your own expense.");
     return;
