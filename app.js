@@ -2516,10 +2516,11 @@ function renderBalances() {
     }
 
 
+    const uniqueValidIds = [...new Set(validIds)];
     const shares =
-      calculateExpenseSharesInPaise(amount, validIds);
+      calculateExpenseSharesInPaise(amount, uniqueValidIds);
 
-    validIds.forEach(id => {
+    uniqueValidIds.forEach(id => {
       owed[id] += shares[id] || 0;
     });
 
@@ -2678,10 +2679,11 @@ function calculateNetBalances() {
     }
 
 
+    const uniqueValidIds = [...new Set(validIds)];
     const shares =
-      calculateExpenseSharesInPaise(amount, validIds);
+      calculateExpenseSharesInPaise(amount, uniqueValidIds);
 
-    validIds.forEach(id => {
+    uniqueValidIds.forEach(id => {
       net[id] -= shares[id] || 0;
     });
 
