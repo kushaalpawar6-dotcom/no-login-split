@@ -1520,6 +1520,11 @@ async function addExpense() {
     return;
   }
 
+  if (payments.some(payment => !isValidCurrencyAmount(payment.amount))) {
+    toast("Each payer amount must be positive and have up to 2 decimal places.");
+    return;
+  }
+
 
   const paymentTotal =
     payments.reduce(
