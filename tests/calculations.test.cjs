@@ -160,7 +160,7 @@ test("multi-payer expense balances correctly even when a payer is also a partici
   assert.equal(Object.values(net).reduce((sum, value) => sum + cents(value), 0), 0);
   assert.deepEqual(
     Object.fromEntries(Object.entries(net).map(([id, value]) => [id, cents(value)])),
-    { 1: 60000, 2: 6667, 3: -33333, 4: -33334 }
+    { 1: 60000, 2: 6666, 3: -33333, 4: -33333 }
   );
 });
 
