@@ -262,11 +262,7 @@
         <button
           type="button"
           class="copy-btn"
-          onclick="
-            navigator.clipboard
-              .writeText(window.location.href)
-              .then(() => toast('Link copied!'))
-          "
+          onclick="copyTripLink()"
         >
           Copy
         </button>
