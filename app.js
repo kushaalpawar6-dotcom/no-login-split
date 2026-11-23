@@ -1898,7 +1898,7 @@ function renderExpenses() {
    DELETE EXPENSE
 ===================================================== */
 
-async function editExpense(expenseId) {
+function editExpense(expenseId) {
   const expense = expenses.find(item => String(item.id) === String(expenseId));
   if (!expense) return;
 
@@ -1909,67 +1909,206 @@ async function editExpense(expenseId) {
     return;
   }
 
-  const description = prompt("Expense description:", expense.description);
-  if (description === null) return;
-  const amountText = prompt("Expense amount:", String(expense.amount));
-  if (amountText === null) return;
-  const amount = Number(amountText);
-  if (!description.trim() || description.trim().length > 200 || !Number.isFinite(amount) || amount <= 0) {
-    toast("Enter valid expense details.");
-    return;
-  }
-  const expenseDate = prompt("Expense date (YYYY-MM-DD):", expense.expense_date || getLocalToday());
-  if (expenseDate === null) return;\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(expenseDate) || Number.isNaN(Date.parse(expenseDate))) {\n    toast("Enter a valid date in YYYY-MM-DD format.");\n    return;\n  }
-
-  let payments = expensePayments
+  const existingPayments = expensePayments
     .filter(payment => String(payment.expense_id) === String(expenseId))
-    .map(payment => ({ person_id: payment.person_id, amount: Number(payment.amount) }));
+    .map(payment => ({ person_id: String(payment.person_id), amount: Number(payment.amount) }));
 
-  if (!payments.length) {
-    payments = [{ person_id: expense.paid_by, amount }];
-  } else if (payments.length === 1) {
-    payments[0].amount = amount;
-  } else {
-    const oldTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    if (oldTotal <= 0) {
-      toast("Payer contributions are invalid.");
+  const initialPayments = existingPayments.length
+    ? existingPayments
+    : [{ person_id: String(expense.paid_by), amount: Number(expense.amount) }];
+
+  const initialSplit = expenseParticipants[expenseId]?.length
+    ? expenseParticipants[expenseId].map(String)
+    : people.map(person => String(person.id));
+
+  const overlay = document.createElement("div");
+  overlay.id = "editExpenseOverlay";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(15,18,30,.58);display:flex;align-items:center;justify-content:center;padding:14px;";
+
+  overlay.innerHTML = `
+    <div role="dialog" aria-modal="true" aria-label="Edit expense" style="width:100%;max-width:520px;max-height:92vh;overflow:auto;background:#fff;border-radius:20px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
+        <h2 style="margin:0;font-size:20px;">Edit expense</h2>
+        <button type="button" id="closeEditExpense" aria-label="Close" style="width:38px;height:38px;border:0;border-radius:12px;background:#f1f2f6;font-size:22px;">×</button>
+      </div>
+
+      <label for="editExpenseDescription">Description</label>
+      <input id="editExpenseDescription" type="text" maxlength="200" value="${escapeHtml(expense.description)}" style="width:100%;box-sizing:border-box;margin:6px 0 14px;">
+
+      <label for="editExpenseAmount">Total amount (₹)</label>
+      <input id="editExpenseAmount" type="number" min="0.01" step="0.01" value="${Number(expense.amount).toFixed(2)}" style="width:100%;box-sizing:border-box;margin:6px 0 14px;">
+
+      <label for="editExpenseDate">Date</label>
+      <input id="editExpenseDate" type="date" value="${escapeHtml(expense.expense_date || getLocalToday())}" style="width:100%;box-sizing:border-box;margin:6px 0 18px;">
+
+      <div style="font-weight:800;margin-bottom:8px;">Paid by</div>
+      <div id="editExpensePayers" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">
+        ${people.map(person => {
+          const payment = initialPayments.find(item => item.person_id === String(person.id));
+          return `
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;align-items:center;gap:8px;padding:9px;border:1px solid #e8eaf0;border-radius:12px;">
+              <label style="display:flex;align-items:center;gap:8px;margin:0;">
+                <input type="checkbox" class="edit-payer-check" value="${person.id}" ${payment ? "checked" : ""}>
+                <span>${escapeHtml(person.name)}</span>
+              </label>
+              <input type="number" class="edit-payer-amount" data-person-id="${person.id}" min="0.01" step="0.01" value="${payment ? Number(payment.amount).toFixed(2) : ""}" ${payment ? "" : "disabled"} style="width:100%;box-sizing:border-box;">
+            </div>
+          `;
+        }).join("")}
+      </div>
+
+      <button type="button" id="editAutoAllocate" style="width:auto;padding:8px 12px;margin-bottom:8px;">Distribute total between selected payers</button>
+      <p id="editPayerTotal" style="font-size:12px;color:#737887;margin:0 0 18px;"></p>
+
+      <div style="font-weight:800;margin-bottom:8px;">Split between</div>
+      <div id="editExpenseSplit" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+        ${people.map(person => `
+          <label style="display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid #e8eaf0;border-radius:12px;margin:0;">
+            <input type="checkbox" class="edit-split-check" value="${person.id}" ${initialSplit.includes(String(person.id)) ? "checked" : ""}>
+            <span>${escapeHtml(person.name)}</span>
+          </label>
+        `).join("")}
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button type="button" id="cancelEditExpense" style="flex:1;background:#f1f2f6;color:#202331;">Cancel</button>
+        <button type="button" id="saveEditExpense" style="flex:1;">Save changes</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.querySelector("#closeEditExpense").addEventListener("click", close);
+  overlay.querySelector("#cancelEditExpense").addEventListener("click", close);
+  overlay.addEventListener("click", event => {
+    if (event.target === overlay) close();
+  });
+
+  const updatePayerTotal = () => {
+    const total = [...overlay.querySelectorAll(".edit-payer-check:checked")]
+      .reduce((sum, checkbox) => {
+        const input = overlay.querySelector(`.edit-payer-amount[data-person-id="${checkbox.value}"]`);
+        return sum + Number(input?.value || 0);
+      }, 0);
+    const amount = Number(overlay.querySelector("#editExpenseAmount").value || 0);
+    overlay.querySelector("#editPayerTotal").textContent =
+      `Payer total: ₹${total.toFixed(2)} / ₹${amount.toFixed(2)}`;
+  };
+
+  overlay.querySelectorAll(".edit-payer-check").forEach(checkbox => {
+    checkbox.addEventListener("change", () => {
+      const input = overlay.querySelector(`.edit-payer-amount[data-person-id="${checkbox.value}"]`);
+      input.disabled = !checkbox.checked;
+      if (!checkbox.checked) input.value = "";
+      updatePayerTotal();
+    });
+  });
+
+  overlay.querySelectorAll(".edit-payer-amount").forEach(input => {
+    input.addEventListener("input", updatePayerTotal);
+  });
+  overlay.querySelector("#editExpenseAmount").addEventListener("input", updatePayerTotal);
+
+  overlay.querySelector("#editAutoAllocate").addEventListener("click", () => {
+    const amount = Number(overlay.querySelector("#editExpenseAmount").value);
+    const selected = [...overlay.querySelectorAll(".edit-payer-check:checked")];
+    if (!Number.isFinite(amount) || amount <= 0 || !selected.length) {
+      toast("Enter an amount and select at least one payer.");
+      return;
+    }
+    const totalPaise = Math.round(amount * 100);
+    if (totalPaise < selected.length) {
+      toast("Total amount is too small for the selected number of payers.");
+      return;
+    }
+    const weights = selected.map(checkbox => {
+      const input = overlay.querySelector(`.edit-payer-amount[data-person-id="${checkbox.value}"]`);
+      return Math.max(0, Number(input.value) || 0);
+    });
+    const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+    let remaining = totalPaise;
+    selected.forEach((checkbox, index) => {
+      const input = overlay.querySelector(`.edit-payer-amount[data-person-id="${checkbox.value}"]`);
+      let paise;
+      if (index === selected.length - 1) {
+        paise = remaining;
+      } else {
+        const weight = weightTotal > 0 ? weights[index] / weightTotal : 1 / selected.length;
+        paise = Math.max(1, Math.round(totalPaise * weight));
+        const futureMinimum = selected.length - index - 1;
+        paise = Math.min(paise, remaining - futureMinimum);
+      }
+      remaining -= paise;
+      input.value = (paise / 100).toFixed(2);
+    });
+    updatePayerTotal();
+  });
+
+  overlay.querySelector("#saveEditExpense").addEventListener("click", async () => {
+    const saveButton = overlay.querySelector("#saveEditExpense");
+    const description = overlay.querySelector("#editExpenseDescription").value.trim();
+    const amount = Number(overlay.querySelector("#editExpenseAmount").value);
+    const expenseDate = overlay.querySelector("#editExpenseDate").value;
+
+    if (!description || description.length > 200 || !Number.isFinite(amount) || amount <= 0 || !expenseDate) {
+      toast("Enter a valid description, amount and date.");
       return;
     }
 
-    let allocated = 0;
-    payments = payments.map((payment, index) => {
-      if (index === payments.length - 1) {
-        return { ...payment, amount: Number((amount - allocated).toFixed(2)) };
-      }
-      const share = Number((amount * payment.amount / oldTotal).toFixed(2));
-      allocated = Number((allocated + share).toFixed(2));
-      return { ...payment, amount: share };
+    const payments = [...overlay.querySelectorAll(".edit-payer-check:checked")].map(checkbox => {
+      const input = overlay.querySelector(`.edit-payer-amount[data-person-id="${checkbox.value}"]`);
+      return { person_id: checkbox.value, amount: Number(input.value) };
     });
-  }
 
-  const splitIds = expenseParticipants[expenseId] || people.map(person => person.id);
+    if (!payments.length || payments.some(payment => !Number.isFinite(payment.amount) || payment.amount <= 0)) {
+      toast("Select payers and enter a positive amount for each.");
+      return;
+    }
 
-  try {
-    await api("/rest/v1/rpc/update_expense_secure", {
-      method: "POST",
-      body: JSON.stringify({
-        p_expense_id: expenseId,
-        p_participant_token: participantToken,
-        p_owner_token: ownerToken,
-        p_description: description.trim(),
-        p_amount: amount,
-        p_paid_by: expense.paid_by,
-        p_expense_date: expenseDate,
-        p_participants: splitIds.map(person_id => ({ person_id })),
-        p_payments: payments
-      })
-    });
-    await loadTrip();
-    toast("Expense updated.");
-  } catch (error) {
-    console.error(error);
-    toast(error.message || "Could not update expense.");
-  }
+    const paymentTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    if (Math.abs(paymentTotal - amount) > 0.01) {
+      toast(`Payer amounts must total ₹${amount.toFixed(2)}. Currently ₹${paymentTotal.toFixed(2)}.`);
+      return;
+    }
+
+    const splitIds = [...overlay.querySelectorAll(".edit-split-check:checked")].map(input => input.value);
+    if (!splitIds.length) {
+      toast("Select at least one person to split this expense.");
+      return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = "Saving...";
+
+    try {
+      await api("/rest/v1/rpc/update_expense_secure", {
+        method: "POST",
+        body: JSON.stringify({
+          p_expense_id: expenseId,
+          p_participant_token: participantToken,
+          p_owner_token: ownerToken,
+          p_description: description,
+          p_amount: amount,
+          p_paid_by: payments[0].person_id,
+          p_expense_date: expenseDate,
+          p_participants: splitIds.map(person_id => ({ person_id })),
+          p_payments: payments
+        })
+      });
+      close();
+      await loadTrip();
+      toast("Expense updated.");
+    } catch (error) {
+      console.error(error);
+      toast(error.message || "Could not update expense.");
+      saveButton.disabled = false;
+      saveButton.textContent = "Save changes";
+    }
+  });
+
+  updatePayerTotal();
 }
 
 
