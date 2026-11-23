@@ -2253,6 +2253,23 @@ function renderTripSummary() {
    BALANCES
 ===================================================== */
 
+function calculateExpenseSharesInPaise(amount, personIds) {
+  const ids = [...new Set(personIds)];
+  if (!ids.length) return {};
+
+  const totalPaise = Math.max(0, Math.round((Number(amount) || 0) * 100));
+  const basePaise = Math.floor(totalPaise / ids.length);
+  const extraPaise = totalPaise % ids.length;
+  const shares = {};
+
+  ids.forEach((personId, index) => {
+    shares[personId] = (basePaise + (index < extraPaise ? 1 : 0)) / 100;
+  });
+
+  return shares;
+}
+
+
 function renderBalances() {
 
   const container =
@@ -2334,16 +2351,11 @@ function renderBalances() {
     }
 
 
-    const share =
-      amount /
-      validIds.length;
-
+    const shares =
+      calculateExpenseSharesInPaise(amount, validIds);
 
     validIds.forEach(id => {
-
-      owed[id] +=
-        share;
-
+      owed[id] += shares[id] || 0;
     });
 
   });
@@ -2501,16 +2513,11 @@ function calculateNetBalances() {
     }
 
 
-    const share =
-      amount /
-      validIds.length;
-
+    const shares =
+      calculateExpenseSharesInPaise(amount, validIds);
 
     validIds.forEach(id => {
-
-      net[id] -=
-        share;
-
+      net[id] -= shares[id] || 0;
     });
 
   });
