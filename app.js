@@ -2198,7 +2198,7 @@ async function deleteOwnExpense(expenseId) {
 
   if (
     !confirm(
-      "Delete your expense?"
+      "Delete this expense?"
     )
   ) {
 
