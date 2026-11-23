@@ -338,110 +338,44 @@ async function createTrip() {
 ===================================================== */
 
 async function loadTrip() {
-
   try {
+    const result = await api("/rest/v1/rpc/get_trip_data", {
+      method: "POST",
+      body: JSON.stringify({ p_trip_id: tripId })
+    });
 
-    const trips = await api(
-      `/rest/v1/trip_public?id=eq.${encodeURIComponent(tripId)}&select=id,name,created_at`
-    );
-
-    if (!trips || trips.length === 0) {
-
+    const data = Array.isArray(result) ? result[0] : result;
+    if (!data?.trip) {
       toast("Trip not found.");
-
       showHome();
-
       return;
     }
 
-    trip = trips[0];
+    trip = data.trip;
+    people = Array.isArray(data.people) ? data.people : [];
+    expenses = Array.isArray(data.expenses) ? data.expenses : [];
+    expensePayments = Array.isArray(data.expensePayments) ? data.expensePayments : [];
+    expenseParticipants = {};
 
-    people = await api(
-      `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
-    );
+    (Array.isArray(data.expenseParticipants) ? data.expenseParticipants : []).forEach(row => {
+      if (!expenseParticipants[row.expense_id]) {
+        expenseParticipants[row.expense_id] = [];
+      }
+      expenseParticipants[row.expense_id].push(row.person_id);
+    });
 
-    expenses = await api(
-      `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at&order=created_at.asc`
-    );
-
-    // Load every contribution so shared payments are reflected correctly.
-    expensePayments = [];
-
-    if (expenses.length) {
-      const expenseIds = expenses.map(expense => expense.id).join(",");
-      expensePayments = await api(
-        `/rest/v1/expense_payments?expense_id=in.(${expenseIds})&select=expense_id,person_id,amount`
-      );
-    }
-
-    await loadExpenseParticipants();
+    // Older expenses without saved split rows are treated as shared by everyone.
+    expenses.forEach(expense => {
+      if (!expenseParticipants[expense.id]?.length) {
+        expenseParticipants[expense.id] = people.map(person => person.id);
+      }
+    });
 
     renderTrip();
-
   } catch (error) {
-
     console.error(error);
-
-    toast(error.message);
-
+    toast(error.message || "Could not load this trip.");
   }
-
-}
-
-
-/* =====================================================
-   LOAD EXPENSE PARTICIPANTS
-===================================================== */
-
-async function loadExpenseParticipants() {
-
-  expenseParticipants = {};
-
-  if (!expenses.length) {
-    return;
-  }
-
-  const ids = expenses
-    .map(e => e.id)
-    .join(",");
-
-  const rows = await api(
-    `/rest/v1/expense_participants?expense_id=in.(${ids})&select=expense_id,person_id`
-  );
-
-  rows.forEach(row => {
-
-    if (!expenseParticipants[row.expense_id]) {
-
-      expenseParticipants[row.expense_id] = [];
-
-    }
-
-    expenseParticipants[row.expense_id]
-      .push(row.person_id);
-
-  });
-
-
-  /*
-    Old expenses without participant rows
-    are treated as shared by everyone.
-  */
-
-  expenses.forEach(expense => {
-
-    if (
-      !expenseParticipants[expense.id] ||
-      !expenseParticipants[expense.id].length
-    ) {
-
-      expenseParticipants[expense.id] =
-        people.map(person => person.id);
-
-    }
-
-  });
-
 }
 
 
