@@ -556,6 +556,11 @@
         return;
       }
 
+      if (people.length >= 50) {
+        toast("This trip has reached the 50-person limit.");
+        return;
+      }
+
 
       const alreadyExists =
         people.some(
