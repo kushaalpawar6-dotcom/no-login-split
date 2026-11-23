@@ -1725,12 +1725,27 @@ $("expenseDate").value = getLocalToday();
 ===================================================== */
 
 function isCurrentUserExpense(expense) {
-  return Boolean(
-    participantId &&
-    expense &&
-    expense.created_by_participant_id &&
-    String(expense.created_by_participant_id) === String(participantId)
+  if (!participantId || !expense) return false;
+
+  // A returning participant may receive a new participant token on another
+  // device. Match the current participant to the saved person profile first.
+  const currentPerson = people.find(person =>
+    String(person.participant_id) === String(participantId) ||
+    (Array.isArray(person.participant_ids) &&
+      person.participant_ids.some(id => String(id) === String(participantId)))
   );
+
+  if (!currentPerson) return false;
+
+  // The database authorizes edits by the creator's person profile name,
+  // so the UI must use the same rule to show the correct controls.
+  if (expense.created_by_name) {
+    return currentPerson.name.trim().toLowerCase() ===
+      String(expense.created_by_name).trim().toLowerCase();
+  }
+
+  // Compatibility for older expenses that do not expose created_by_name.
+  return String(expense.created_by_participant_id) === String(participantId);
 }
 
 
