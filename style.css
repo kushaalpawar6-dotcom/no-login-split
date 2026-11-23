@@ -250,29 +250,33 @@ select:focus {
 
 .people-heading {
   display: flex;
-
   align-items: center;
   justify-content: space-between;
-
+  gap: 10px;
   margin-top: 20px;
 }
 
 .people-heading label {
   margin: 0;
+  font-weight: 750;
+}
+
+.people-help {
+  margin: 5px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .add-person-btn {
-  border: 0;
-
-  background: transparent;
-
-  color: var(--primary);
-
+  border: 1px solid #B7E4CE;
+  border-radius: 999px;
+  background: #ECFDF5;
+  color: #047857;
   font-weight: 700;
-
   font-size: 13px;
-
-  padding: 8px 0;
+  padding: 8px 12px;
+  white-space: nowrap;
 }
 
 .person-row {
