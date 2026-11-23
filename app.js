@@ -533,8 +533,24 @@ function addExpenseDateField() {
 
 function renderOwnerControls() {
   let panel = $("ownerControls");
+
   if (!ownerToken) {
-    if (panel) panel.remove();
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "ownerControls";
+      panel.className = "card";
+      panel.style.cssText = "margin-bottom:16px;";
+      const expenseCard = document.querySelector(".expense-card");
+      if (expenseCard?.parentNode) {
+        expenseCard.parentNode.insertBefore(panel, expenseCard);
+      }
+    }
+    if (panel) {
+      panel.innerHTML = `
+        <div style="font-weight:800;margin-bottom:6px;">Creator controls</div>
+        <p style="font-size:13px;color:#737887;margin:0;">Creator-only controls are available on the browser that created the trip. If this trip was created before creator-key storage was added, its key was not saved and cannot be recovered safely.</p>
+      `;
+    }
     return;
   }
 
