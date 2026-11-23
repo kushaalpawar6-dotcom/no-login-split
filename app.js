@@ -580,7 +580,9 @@ function renderOwnerControls() {
       ${people.map(person => `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e8eaf0;border-radius:12px;">
           <span style="font-weight:600;">${escapeHtml(person.name)}</span>
-          <button type="button" class="danger" style="width:auto;padding:7px 10px;" onclick="deleteTripPerson('${person.id}')">Delete</button>
+          ${people.length > 2
+            ? `<button type="button" class="danger" style="width:auto;padding:7px 10px;" onclick="deleteTripPerson('${person.id}')">Delete</button>`
+            : `<span style="font-size:11px;color:#737887;">Keep at least 2 people</span>`}
         </div>
       `).join("")}
       <button type="button" class="danger" style="margin-top:8px;" onclick="deleteCurrentTrip()">Delete Trip</button>
