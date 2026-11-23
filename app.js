@@ -745,25 +745,62 @@ function renderMemberSelector() {
 
       hideMemberSelector();
 
+      let identity = $("memberIdentity");
+
+      if (!identity) {
+        identity = document.createElement("div");
+        identity.id = "memberIdentity";
+        identity.className = "card";
+        identity.style.cssText = "margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;";
+        $("tripScreen").insertBefore(identity, $("tripScreen").firstChild);
+      }
+
+      identity.innerHTML = `
+        <div style="min-width:0;">
+          <div style="font-size:12px;color:#737887;font-weight:600;margin-bottom:3px;">Who are you?</div>
+          <div style="font-size:16px;font-weight:800;color:#151823;">${escapeHtml(existing.name)}</div>
+        </div>
+        <button type="button" class="secondary" onclick="changeMemberProfile()" style="width:auto;min-height:40px;padding:8px 13px;white-space:nowrap;">
+          Change person
+        </button>
+      `;
+
       return;
     }
 
     participantId = null;
-
     participantToken = null;
 
-    localStorage.removeItem(
-      `nls_participant_${tripId}`
-    );
-
-    localStorage.removeItem(
-      `nls_participant_id_${tripId}`
-    );
-
+    localStorage.removeItem(`nls_participant_${tripId}`);
+    localStorage.removeItem(`nls_participant_id_${tripId}`);
   }
+
+  const identity = $("memberIdentity");
+  if (identity) identity.remove();
 
   showMemberSelector();
 
+}
+
+function changeMemberProfile() {
+
+  if (!tripId || !people.length) {
+    toast("Trip members are not available yet.");
+    return;
+  }
+
+  // Keep creator access on this device, but ask the user to choose
+  // their participant profile again.
+  participantId = null;
+  participantToken = null;
+
+  localStorage.removeItem(`nls_participant_${tripId}`);
+  localStorage.removeItem(`nls_participant_id_${tripId}`);
+
+  const identity = $("memberIdentity");
+  if (identity) identity.remove();
+
+  showMemberSelector();
 }
 
 
