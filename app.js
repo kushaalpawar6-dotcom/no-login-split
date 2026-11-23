@@ -8,6 +8,7 @@ let trip = null;
 let people = [];
 let expenses = [];
 let expenseParticipants = {};
+let expensePayments = [];
 
 let participantToken =
   tripId
@@ -320,6 +321,16 @@ async function loadTrip() {
     expenses = await api(
       `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at&order=created_at.asc`
     );
+
+    // Load every contribution so shared payments are reflected correctly.
+    expensePayments = [];
+
+    if (expenses.length) {
+      const expenseIds = expenses.map(expense => expense.id).join(",");
+      expensePayments = await api(
+        `/rest/v1/expense_payments?expense_id=in.(${expenseIds})&select=expense_id,person_id,amount`
+      );
+    }
 
     await loadExpenseParticipants();
 
@@ -1695,12 +1706,30 @@ function renderExpenses() {
 
   expenses.forEach(expense => {
 
-    const payer =
-      people.find(
-        person =>
-          String(person.id) ===
-          String(expense.paid_by)
+    const paymentsForExpense =
+      expensePayments.filter(
+        payment =>
+          String(payment.expense_id) === String(expense.id)
       );
+
+    const payerDisplay = paymentsForExpense.length
+      ? paymentsForExpense
+          .map(payment => {
+            const person = people.find(
+              item => String(item.id) === String(payment.person_id)
+            );
+            return person
+              ? `${person.name} (₹${Number(payment.amount).toFixed(2)})`
+              : null;
+          })
+          .filter(Boolean)
+          .join(", ")
+      : (
+          people.find(
+            person =>
+              String(person.id) === String(expense.paid_by)
+          )?.name || "Unknown"
+        );
 
 
     const creator =
@@ -1802,10 +1831,7 @@ function renderExpenses() {
 
             • Paid by
 
-            ${escapeHtml(
-              payer?.name ||
-              "Unknown"
-            )}
+            ${escapeHtml(payerDisplay)}
 
             ${
               creator
@@ -2178,14 +2204,22 @@ function renderBalances() {
       ) || 0;
 
 
-    if (
-      paid[expense.paid_by] !==
-      undefined
-    ) {
+    const paymentRows =
+      expensePayments.filter(
+        payment =>
+          String(payment.expense_id) === String(expense.id)
+      );
 
-      paid[expense.paid_by] +=
-        amount;
-
+    if (paymentRows.length) {
+      paymentRows.forEach(payment => {
+        const payerId = String(payment.person_id);
+        if (paid[payerId] !== undefined) {
+          paid[payerId] += Number(payment.amount) || 0;
+        }
+      });
+    } else if (paid[expense.paid_by] !== undefined) {
+      // Older expenses may not have contribution rows.
+      paid[expense.paid_by] += amount;
     }
 
 
@@ -2335,21 +2369,26 @@ function calculateNetBalances() {
       Number(expense.amount) || 0;
 
 
-    const payerId =
-      String(expense.paid_by);
+    const paymentRows =
+      expensePayments.filter(
+        payment =>
+          String(payment.expense_id) === String(expense.id)
+      );
 
+    if (paymentRows.length) {
+      paymentRows.forEach(payment => {
+        const payerId = String(payment.person_id);
+        if (net[payerId] !== undefined) {
+          net[payerId] += Number(payment.amount) || 0;
+        }
+      });
+    } else {
+      const payerId = String(expense.paid_by);
+      if (net[payerId] === undefined) return;
 
-    if (
-      net[payerId] === undefined
-    ) {
-
-      return;
-
+      // Backward compatibility for older single-payer expenses.
+      net[payerId] += amount;
     }
-
-
-    net[payerId] +=
-      amount;
 
 
     const ids =
