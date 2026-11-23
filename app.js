@@ -2066,17 +2066,22 @@ function editExpense(expenseId) {
       <label for="editExpenseDate">Date</label>
       <input id="editExpenseDate" type="date" value="${escapeHtml(expense.expense_date || getLocalToday())}" style="width:100%;box-sizing:border-box;margin:6px 0 18px;">
 
-      <div style="font-weight:800;margin-bottom:8px;">Paid by</div>
+      <div style="font-weight:800;margin-bottom:5px;">Paid by</div>
+      <p style="font-size:12px;color:#718078;margin:0 0 10px;line-height:1.45;">Select who paid. Enter the amount beside each person's name.</p>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:8px;padding:0 10px;margin-bottom:5px;color:#718078;font-size:11px;font-weight:700;">
+        <span>Person</span>
+        <span>Paid amount</span>
+      </div>
       <div id="editExpensePayers" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">
         ${people.map(person => {
           const payment = initialPayments.find(item => item.person_id === String(person.id));
           return `
-            <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;align-items:center;gap:8px;padding:9px;border:1px solid #e8eaf0;border-radius:12px;">
-              <label style="display:flex;align-items:center;gap:8px;margin:0;">
-                <input type="checkbox" class="edit-payer-check" value="${person.id}" ${payment ? "checked" : ""}>
-                <span>${escapeHtml(person.name)}</span>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 112px;align-items:center;gap:8px;padding:9px 10px;border:1px solid #E1ECE5;border-radius:12px;background:#F5FAF7;">
+              <label style="display:flex;align-items:center;gap:8px;margin:0;min-width:0;font-size:13px;">
+                <input type="checkbox" class="edit-payer-check" value="${person.id}" ${payment ? "checked" : ""} style="width:18px;height:18px;flex:0 0 18px;margin:0;">
+                <span style="overflow-wrap:anywhere;">${escapeHtml(person.name)}</span>
               </label>
-              <input type="number" class="edit-payer-amount" data-person-id="${person.id}" min="0.01" step="0.01" value="${payment ? Number(payment.amount).toFixed(2) : ""}" ${payment ? "" : "disabled"} style="width:100%;box-sizing:border-box;">
+              <input type="number" class="edit-payer-amount" data-person-id="${person.id}" min="0.01" step="0.01" inputmode="decimal" placeholder="₹ 0.00" value="${payment ? Number(payment.amount).toFixed(2) : ""}" ${payment ? "" : "disabled"} style="width:100%;height:44px;box-sizing:border-box;padding:0 8px;font-size:13px;text-align:right;">
             </div>
           `;
         }).join("")}
