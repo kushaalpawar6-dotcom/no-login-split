@@ -2121,7 +2121,7 @@ function editExpense(expenseId) {
 
 async function deleteOwnExpense(expenseId) {
 
-  if (!participantToken) {
+  if (!participantToken && !ownerToken) {
 
     toast(
       "Permission required."
