@@ -1537,7 +1537,7 @@ async function addExpense() {
   if (
     Math.abs(
       paymentTotal - amount
-    ) > 0.01
+    ) > 0.001
   ) {
 
     toast(
@@ -2103,7 +2103,7 @@ function editExpense(expenseId) {
     }
 
     const paymentTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    if (Math.abs(paymentTotal - amount) > 0.01) {
+    if (Math.abs(paymentTotal - amount) > 0.001) {
       toast(`Payer amounts must total ₹${amount.toFixed(2)}. Currently ₹${paymentTotal.toFixed(2)}.`);
       return;
     }
