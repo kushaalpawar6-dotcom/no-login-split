@@ -1730,23 +1730,28 @@ function renderExpenses() {
     let deleteButton = "";
 
 
-    if (isMine) {
+    if (isMine || ownerToken) {
 
       deleteButton = `
 
-        <button
-          class="danger"
-          style="
-            width:auto;
-            padding:8px 12px;
-            margin-top:10px;
-          "
-          onclick="
-            deleteOwnExpense('${expense.id}')
-          "
-        >
-          Delete
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <button
+            type="button"
+            style="width:auto;padding:8px 12px;"
+            onclick="editExpense('${expense.id}')"
+          >
+            Edit
+          </button>
+
+          <button
+            type="button"
+            class="danger"
+            style="width:auto;padding:8px 12px;"
+            onclick="deleteOwnExpense('${expense.id}')"
+          >
+            Delete
+          </button>
+        </div>
 
       `;
 
@@ -1837,6 +1842,69 @@ function renderExpenses() {
 /* =====================================================
    DELETE EXPENSE
 ===================================================== */
+
+async function editExpense(expenseId) {
+  const expense = expenses.find(item => String(item.id) === String(expenseId));
+  if (!expense) return;
+
+  const isMine = participantId &&
+    String(expense.created_by_participant_id) === String(participantId);
+  if (!ownerToken && !isMine) {
+    toast("You can only edit your own expense.");
+    return;
+  }
+
+  const description = prompt("Expense description:", expense.description);
+  if (description === null) return;
+  const amountText = prompt("Expense amount:", String(expense.amount));
+  if (amountText === null) return;
+  const amount = Number(amountText);
+  if (!description.trim() || !Number.isFinite(amount) || amount <= 0) {
+    toast("Enter valid expense details.");
+    return;
+  }
+  const expenseDate = prompt("Expense date (YYYY-MM-DD):", expense.expense_date || getLocalToday());
+  if (expenseDate === null) return;
+
+  let payments = expensePayments
+    .filter(payment => String(payment.expense_id) === String(expenseId))
+    .map(payment => ({ person_id: payment.person_id, amount: Number(payment.amount) }));
+
+  if (!payments.length) {
+    payments = [{ person_id: expense.paid_by, amount }];
+  } else {
+    const oldTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
+    if (Math.abs(oldTotal - amount) > 0.01) {
+      toast("This expense has multiple payers. Its total changed; please delete and add it again to change payer contributions.");
+      return;
+    }
+  }
+
+  const splitIds = expenseParticipants[expenseId] || people.map(person => person.id);
+
+  try {
+    await api("/rest/v1/rpc/update_expense_secure", {
+      method: "POST",
+      body: JSON.stringify({
+        p_expense_id: expenseId,
+        p_participant_token: participantToken,
+        p_owner_token: ownerToken,
+        p_description: description.trim(),
+        p_amount: amount,
+        p_paid_by: expense.paid_by,
+        p_expense_date: expenseDate,
+        p_participants: splitIds.map(person_id => ({ person_id })),
+        p_payments: payments
+      })
+    });
+    await loadTrip();
+    toast("Expense updated.");
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not update expense.");
+  }
+}
+
 
 async function deleteOwnExpense(expenseId) {
 
