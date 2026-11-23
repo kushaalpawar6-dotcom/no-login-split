@@ -819,7 +819,7 @@ function showMemberSelector() {
         </h2>
 
         <p>
-          Select your name to use this trip.
+          Select your name to use this trip. Anyone with the link can choose a profile, so share it only with your group.
         </p>
 
       </div>
