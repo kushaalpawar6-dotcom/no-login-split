@@ -568,7 +568,7 @@ function renderOwnerControls() {
         </div>
       `).join("")}
       <button type="button" class="danger" style="margin-top:8px;" onclick="deleteCurrentTrip()">Delete Trip</button>
-      <p style="font-size:12px;color:#737887;margin:0;">People linked to existing expenses cannot be deleted, to protect expense history.</p>
+      <p style="font-size:12px;color:#737887;margin:0;">People linked to existing expenses cannot be deleted, to protect expense history.</p>\n      <p style="font-size:12px;color:#737887;margin:0;">Creator access is saved on this device. Clearing browser data removes it.</p>
     </div>
   `;
 }
