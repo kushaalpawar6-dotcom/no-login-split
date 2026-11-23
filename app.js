@@ -361,7 +361,7 @@ async function loadTrip() {
     );
 
     expenses = await api(
-      `/rest/v1/expense_public?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at,created_by_name&order=created_at.asc`
+      `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at&order=created_at.asc`
     );
 
     // Load every contribution so shared payments are reflected correctly.
