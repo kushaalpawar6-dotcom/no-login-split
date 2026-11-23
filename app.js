@@ -83,6 +83,13 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+  
+function isValidCurrencyAmount(value) {
+  return Number.isFinite(value) &&
+    value > 0 &&
+    Math.abs(value * 100 - Math.round(value * 100)) < 0.0000001;
+}
+
 
 
 /* =========================
@@ -558,8 +565,24 @@ function addExpenseDateField() {
 
 function renderOwnerControls() {
   let panel = $("ownerControls");
+
   if (!ownerToken) {
-    if (panel) panel.remove();
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "ownerControls";
+      panel.className = "card";
+      panel.style.cssText = "margin-bottom:16px;";
+      const expenseCard = document.querySelector(".expense-card");
+      if (expenseCard?.parentNode) {
+        expenseCard.parentNode.insertBefore(panel, expenseCard);
+      }
+    }
+    if (panel) {
+      panel.innerHTML = `
+        <div style="font-weight:800;margin-bottom:6px;">Creator controls</div>
+        <p style="font-size:13px;color:#737887;margin:0;">Creator-only controls are available on the browser that created the trip. If this trip was created before creator-key storage was added, its key was not saved and cannot be recovered safely.</p>
+      `;
+    }
     return;
   }
 
@@ -589,7 +612,9 @@ function renderOwnerControls() {
       ${people.map(person => `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e8eaf0;border-radius:12px;">
           <span style="font-weight:600;">${escapeHtml(person.name)}</span>
-          <button type="button" class="danger" style="width:auto;padding:7px 10px;" onclick="deleteTripPerson('${person.id}')">Delete</button>
+          ${people.length > 2
+            ? `<button type="button" class="danger" style="width:auto;padding:7px 10px;" onclick="deleteTripPerson('${person.id}')">Delete</button>`
+            : `<span style="font-size:11px;color:#737887;">Keep at least 2 people</span>`}
         </div>
       `).join("")}
       <button type="button" class="danger" style="margin-top:8px;" onclick="deleteCurrentTrip()">Delete Trip</button>
@@ -767,7 +792,7 @@ function showMemberSelector() {
         </h2>
 
         <p>
-          Select your name to use this trip.
+          Select your name to use this trip. Anyone with the link can choose a profile, so share it only with your group.
         </p>
 
       </div>
@@ -1437,13 +1462,10 @@ async function addExpense() {
   }
 
 
-  if (
-    !amount ||
-    amount <= 0
-  ) {
+  if (!isValidCurrencyAmount(amount)) {
 
     toast(
-      "Enter a valid amount."
+      "Enter a valid amount with up to 2 decimal places."
     );
 
     return;
@@ -1523,6 +1545,11 @@ async function addExpense() {
     return;
   }
 
+  if (payments.some(payment => !isValidCurrencyAmount(payment.amount))) {
+    toast("Each payer amount must be positive and have up to 2 decimal places.");
+    return;
+  }
+
 
   const paymentTotal =
     payments.reduce(
@@ -1535,7 +1562,7 @@ async function addExpense() {
   if (
     Math.abs(
       paymentTotal - amount
-    ) > 0.01
+    ) > 0.001
   ) {
 
     toast(
@@ -2083,7 +2110,7 @@ function editExpense(expenseId) {
     const amount = Number(overlay.querySelector("#editExpenseAmount").value);
     const expenseDate = overlay.querySelector("#editExpenseDate").value;
 
-    if (!description || description.length > 200 || !Number.isFinite(amount) || amount <= 0 || !expenseDate) {
+    if (!description || description.length > 200 || !isValidCurrencyAmount(amount) || !expenseDate) {
       toast("Enter a valid description, amount and date.");
       return;
     }
@@ -2093,13 +2120,13 @@ function editExpense(expenseId) {
       return { person_id: checkbox.value, amount: Number(input.value) };
     });
 
-    if (!payments.length || payments.some(payment => !Number.isFinite(payment.amount) || payment.amount <= 0)) {
+    if (!payments.length || payments.some(payment => !isValidCurrencyAmount(payment.amount))) {
       toast("Select payers and enter a positive amount for each.");
       return;
     }
 
     const paymentTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    if (Math.abs(paymentTotal - amount) > 0.01) {
+    if (Math.abs(paymentTotal - amount) > 0.001) {
       toast(`Payer amounts must total ₹${amount.toFixed(2)}. Currently ₹${paymentTotal.toFixed(2)}.`);
       return;
     }
@@ -2425,6 +2452,11 @@ function renderTripSummary() {
 
 function calculateExpenseSharesInPaise(amount, personIds) {
   const ids = [...new Set(personIds)];
+  ids.sort((a, b) => {
+    const indexA = people.findIndex(person => String(person.id) === String(a));
+    const indexB = people.findIndex(person => String(person.id) === String(b));
+    return indexA - indexB;
+  });
   if (!ids.length) return {};
 
   const totalPaise = Math.max(0, Math.round((Number(amount) || 0) * 100));
@@ -2521,10 +2553,11 @@ function renderBalances() {
     }
 
 
+    const uniqueValidIds = [...new Set(validIds)];
     const shares =
-      calculateExpenseSharesInPaise(amount, validIds);
+      calculateExpenseSharesInPaise(amount, uniqueValidIds);
 
-    validIds.forEach(id => {
+    uniqueValidIds.forEach(id => {
       owed[id] += shares[id] || 0;
     });
 
@@ -2683,10 +2716,11 @@ function calculateNetBalances() {
     }
 
 
+    const uniqueValidIds = [...new Set(validIds)];
     const shares =
-      calculateExpenseSharesInPaise(amount, validIds);
+      calculateExpenseSharesInPaise(amount, uniqueValidIds);
 
-    validIds.forEach(id => {
+    uniqueValidIds.forEach(id => {
       net[id] -= shares[id] || 0;
     });
 
@@ -3096,61 +3130,40 @@ function renderWhoOwesWhom() {
    SHARE MASTER LINK
 ===================================================== */
 
-async function shareTrip() {
-
-  const url =
-    window.location.href;
-
-
-  try {
-
-    if (navigator.share) {
-
-      await navigator.share({
-
-        title:
-          `${trip.name} — No Login Split`,
-
-        text:
-          "Join our expense split",
-
-        url:
-          url
-
-      });
-
-    }
-
-    else {
-
-      await navigator.clipboard
-        .writeText(url);
-
-
-      toast(
-        "Trip link copied!"
-      );
-
-    }
-
-  }
-
-
-  catch (error) {
-
-    if (
-      error.name !==
-      "AbortError"
-    ) {
-
-      toast(
-        "Unable to share the link."
-      );
-    }
-
-  }
-
+function getTripShareUrl() {
+  return `${window.location.origin}${window.location.pathname}?trip=${encodeURIComponent(tripId)}`;
 }
+
+async function copyTripLink() {
+  const url = getTripShareUrl();
+  try {
+    await navigator.clipboard.writeText(url);
+    toast("Trip link copied!");
+  } catch (error) {
+    window.prompt("Copy your trip link:", url);
+  }
+}
+
+async function shareTrip() {
+  const url = getTripShareUrl();
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `${trip.name} — No Login Split`,
+        text: "Join our expense split",
+        url
+      });
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+    }
+  }
+
+  await copyTripLink();
+}
+
+
 /* =====================================================
    BUTTONS
 ===================================================== */
