@@ -736,8 +736,9 @@ function renderMemberSelector() {
     const existing =
       people.find(
         person =>
-          person.participant_id ===
-          participantId
+          String(person.participant_id) === String(participantId) ||
+          (Array.isArray(person.participant_ids) &&
+            person.participant_ids.some(id => String(id) === String(participantId)))
       );
 
     if (existing) {
