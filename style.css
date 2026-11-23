@@ -3,13 +3,13 @@
 }
 
 :root {
-  --bg: #F8F7FF;
+  --bg: #F5FAF7;
   --card: #ffffff;
-  --text: #1E1B2E;
-  --muted: #77738A;
-  --border: #E9E5F5;
-  --primary: #6366F1;
-  --primary-dark: #4F46E5;
+  --text: #17251E;
+  --muted: #718078;
+  --border: #E1ECE5;
+  --primary: #059669;
+  --primary-dark: #047857;
   --green: #16864b;
   --red: #d74444;
   --shadow:
@@ -28,7 +28,7 @@ body {
   background:
     radial-gradient(
       circle at top left,
-      rgba(99, 102, 241, 0.10),
+      rgba(5, 150, 105, 0.10),
       transparent 30%
     ),
     var(--bg);
@@ -100,15 +100,15 @@ button {
   background:
     linear-gradient(
       135deg,
-      #7C6FF5,
-      #5145D8
+      #34B982,
+      #047857
     );
 
   color: white;
 
   box-shadow:
     0 10px 25px
-    rgba(99, 102, 241, 0.25);
+    rgba(5, 150, 105, 0.25);
 }
 
 .logo {
@@ -213,7 +213,7 @@ select {
 
   border-radius: 14px;
 
-  background: #FBFAFF;
+  background: #FAFCFA;
 
   padding: 0 15px;
 
@@ -236,11 +236,11 @@ select:focus {
   background: white;
 
   border-color:
-    rgba(99, 102, 241, 0.55);
+    rgba(5, 150, 105, 0.55);
 
   box-shadow:
     0 0 0 4px
-    rgba(99, 102, 241, 0.08);
+    rgba(5, 150, 105, 0.08);
 }
 
 
@@ -294,7 +294,7 @@ select:focus {
 
   border-radius: 14px;
 
-  background: #FBFAFF;
+  background: #FAFCFA;
 
   color: #999daa;
 
@@ -338,7 +338,7 @@ select:focus {
 
   box-shadow:
     0 9px 22px
-    rgba(99, 102, 241, 0.22);
+    rgba(5, 150, 105, 0.22);
 
   transition:
     transform 0.15s,
@@ -373,7 +373,7 @@ select:focus {
 
   border-radius: 12px;
 
-  background: #F1F0FF;
+  background: #EAF7F0;
 
   color: #686d82;
 
@@ -518,7 +518,7 @@ select:focus {
 
   padding: 11px 14px;
 
-  background: #EFEEFF;
+  background: #E8F5EE;
 
   color: var(--primary);
 
@@ -550,12 +550,12 @@ select:focus {
   background:
     linear-gradient(
       135deg,
-      #F1F0FF,
-      #FAF9FF
+      #EAF7F0,
+      #F8FCF9
     );
 
   border:
-    1px solid #E4E1FF;
+    1px solid #D7EDE0;
 
   border-radius: 18px;
 }
@@ -652,7 +652,7 @@ select:focus {
 
   border-radius: 13px;
 
-  background: #EFEEFF;
+  background: #E8F5EE;
 
   color: var(--primary);
 
@@ -819,10 +819,10 @@ select:focus {
 
   border-radius: 13px;
 
-  background: #F8F7FC;
+  background: #F5F9F6;
 
   border:
-    1px solid #EEEAF5;
+    1px solid #E5EEE7;
 }
 
 .balance-row {
@@ -1032,7 +1032,7 @@ select:focus {
   padding: 15px;
   border-radius: 17px;
   background: linear-gradient(135deg, #f6f5ff, #fbfbff);
-  border: 1px solid #E4E1FF;
+  border: 1px solid #D7EDE0;
 }
 
 .settlement-heading {
@@ -1062,7 +1062,7 @@ select:focus {
   justify-content: center;
   flex-shrink: 0;
   border-radius: 12px;
-  background: #EFEEFF;
+  background: #E8F5EE;
   color: var(--primary);
   font-size: 20px;
   font-weight: 800;
@@ -1083,7 +1083,7 @@ select:focus {
   padding: 12px;
   border-radius: 13px;
   background: white;
-  border: 1px solid #EEEAF5;
+  border: 1px solid #E5EEE7;
 }
 
 .settlement-person {
@@ -1111,7 +1111,7 @@ select:focus {
   padding: 13px;
   border-radius: 13px;
   background: white;
-  border: 1px solid #EEEAF5;
+  border: 1px solid #E5EEE7;
   color: var(--green);
   text-align: center;
   font-size: 12px;
