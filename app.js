@@ -567,6 +567,10 @@ function renderOwnerControls() {
   let panel = $("ownerControls");
 
   if (!ownerToken) {
+    if (!participantToken) {
+      if (panel) panel.remove();
+      return;
+    }
     if (!panel) {
       panel = document.createElement("div");
       panel.id = "ownerControls";
@@ -575,14 +579,15 @@ function renderOwnerControls() {
       const expenseCard = document.querySelector(".expense-card");
       if (expenseCard?.parentNode) {
         expenseCard.parentNode.insertBefore(panel, expenseCard);
+      } else {
+        $("tripScreen").appendChild(panel);
       }
     }
-    if (panel) {
-      panel.innerHTML = `
-        <div style="font-weight:800;margin-bottom:6px;">Creator controls</div>
-        <p style="font-size:13px;color:#737887;margin:0;">Creator-only controls are available on the browser that created the trip. If this trip was created before creator-key storage was added, its key was not saved and cannot be recovered safely.</p>
-      `;
-    }
+    panel.innerHTML = `
+      <div style="font-weight:800;margin-bottom:6px;">Older trip creator access</div>
+      <p style="font-size:13px;color:#737887;margin:0 0 12px;">If you created this trip originally, the first participant can restore creator controls using their saved participant access.</p>
+      <button type="button" style="width:100%;" onclick="claimLegacyTripOwner()">Restore creator access</button>
+    `;
     return;
   }
 
@@ -623,6 +628,32 @@ function renderOwnerControls() {
     </div>
   `;
 }
+
+async function claimLegacyTripOwner() {
+  if (!participantToken) {
+    toast("Select your original participant profile first.");
+    return;
+  }
+  try {
+    const result = await api("/rest/v1/rpc/claim_legacy_trip_owner", {
+      method: "POST",
+      body: JSON.stringify({
+        p_trip_id: tripId,
+        p_participant_token: participantToken
+      })
+    });
+    const data = Array.isArray(result) ? result[0] : result;
+    if (!data?.owner_token) throw new Error("Creator access could not be restored.");
+    ownerToken = data.owner_token;
+    localStorage.setItem(`nls_owner_${tripId}`, ownerToken);
+    await loadTrip();
+    toast("Creator access restored.");
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not restore creator access.");
+  }
+}
+
 
 async function deleteTripPerson(personId) {
   if (!ownerToken) {
