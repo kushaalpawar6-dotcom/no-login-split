@@ -34,6 +34,31 @@ function $(id) {
   return document.getElementById(id);
 }
 
+async function copyTripLink() {
+  const link = window.location.href;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(link);
+    } else {
+      const field = document.createElement("textarea");
+      field.value = link;
+      field.setAttribute("readonly", "");
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.appendChild(field);
+      field.select();
+      const copied = document.execCommand("copy");
+      field.remove();
+      if (!copied) throw new Error("Clipboard unavailable");
+    }
+    toast("Trip link copied.");
+  } catch (error) {
+    console.error(error);
+    toast("Could not copy automatically. Please copy the link shown above.");
+  }
+}
+
+
 function toast(message) {
   const box = $("toast");
 
