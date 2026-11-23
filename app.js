@@ -2048,10 +2048,10 @@ function editExpense(expenseId) {
 
   const overlay = document.createElement("div");
   overlay.id = "editExpenseOverlay";
-  overlay.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(15,18,30,.58);display:flex;align-items:center;justify-content:center;padding:14px;";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(15,18,30,.58);display:flex;align-items:flex-start;justify-content:center;padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto;-webkit-overflow-scrolling:touch;";
 
   overlay.innerHTML = `
-    <div role="dialog" aria-modal="true" aria-label="Edit expense" style="width:100%;max-width:520px;max-height:92vh;overflow:auto;background:#fff;border-radius:20px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div role="dialog" aria-modal="true" aria-label="Edit expense" style="width:100%;max-width:520px;max-height:calc(100dvh - 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border-radius:20px;padding:16px;box-sizing:border-box;margin:auto 0;box-shadow:0 20px 60px rgba(0,0,0,.25);">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">
         <h2 style="margin:0;font-size:20px;">Edit expense</h2>
         <button type="button" id="closeEditExpense" aria-label="Close" style="width:38px;height:38px;border:0;border-radius:12px;background:#f1f2f6;font-size:22px;">×</button>
@@ -2095,9 +2095,9 @@ function editExpense(expenseId) {
         `).join("")}
       </div>
 
-      <div style="display:flex;gap:10px;">
-        <button type="button" id="cancelEditExpense" style="flex:1;background:#f1f2f6;color:#202331;">Cancel</button>
-        <button type="button" id="saveEditExpense" style="flex:1;">Save changes</button>
+      <div id="editExpenseActions" style="position:sticky;bottom:-16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;padding:12px 0 4px;background:#fff;z-index:5;border-top:1px solid #eceef3;">
+        <button type="button" id="cancelEditExpense" style="min-width:0;width:100%;padding:12px 6px;background:#f1f2f6;color:#202331;white-space:normal;">Cancel</button>
+        <button type="button" id="saveEditExpense" style="min-width:0;width:100%;padding:12px 6px;white-space:normal;">Save changes</button>
       </div>
     </div>
   `;
