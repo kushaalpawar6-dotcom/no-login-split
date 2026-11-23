@@ -1872,6 +1872,8 @@ async function editExpense(expenseId) {
 
   if (!payments.length) {
     payments = [{ person_id: expense.paid_by, amount }];
+  } else if (payments.length === 1) {
+    payments[0].amount = amount;
   } else {
     const oldTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
     if (Math.abs(oldTotal - amount) > 0.01) {
