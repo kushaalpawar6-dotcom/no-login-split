@@ -127,6 +127,7 @@ function createPersonField() {
   const input = document.createElement("input");
 
   input.type = "text";
+  input.maxLength = 80;
   input.className = "person-input";
 
   input.placeholder =
@@ -196,13 +197,13 @@ async function createTrip() {
       .map(input => input.value.trim())
       .filter(name => name.length > 0);
 
-  if (!tripName) {
-    toast("Enter a trip name.");
+  if (!tripName || tripName.length > 100) {
+    toast("Enter a trip name (maximum 100 characters).");
     return;
   }
 
-  if (names.length < 2) {
-    toast("Add at least 2 people.");
+  if (names.length < 2 || names.length > 50) {
+    toast("Add between 2 and 50 people.");
     return;
   }
 
@@ -1403,7 +1404,7 @@ async function addExpense() {
   if (!description) {
 
     toast(
-      "Enter a description."
+      "Enter a description (maximum 200 characters)."
     );
 
     return;
@@ -1913,12 +1914,12 @@ async function editExpense(expenseId) {
   const amountText = prompt("Expense amount:", String(expense.amount));
   if (amountText === null) return;
   const amount = Number(amountText);
-  if (!description.trim() || !Number.isFinite(amount) || amount <= 0) {
+  if (!description.trim() || description.trim().length > 200 || !Number.isFinite(amount) || amount <= 0) {
     toast("Enter valid expense details.");
     return;
   }
   const expenseDate = prompt("Expense date (YYYY-MM-DD):", expense.expense_date || getLocalToday());
-  if (expenseDate === null) return;
+  if (expenseDate === null) return;\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(expenseDate) || Number.isNaN(Date.parse(expenseDate))) {\n    toast("Enter a valid date in YYYY-MM-DD format.");\n    return;\n  }
 
   let payments = expensePayments
     .filter(payment => String(payment.expense_id) === String(expenseId))
