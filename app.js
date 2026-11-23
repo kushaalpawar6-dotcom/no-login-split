@@ -3102,61 +3102,40 @@ function renderWhoOwesWhom() {
    SHARE MASTER LINK
 ===================================================== */
 
-async function shareTrip() {
-
-  const url =
-    window.location.href;
-
-
-  try {
-
-    if (navigator.share) {
-
-      await navigator.share({
-
-        title:
-          `${trip.name} — No Login Split`,
-
-        text:
-          "Join our expense split",
-
-        url:
-          url
-
-      });
-
-    }
-
-    else {
-
-      await navigator.clipboard
-        .writeText(url);
-
-
-      toast(
-        "Trip link copied!"
-      );
-
-    }
-
-  }
-
-
-  catch (error) {
-
-    if (
-      error.name !==
-      "AbortError"
-    ) {
-
-      toast(
-        "Unable to share the link."
-      );
-    }
-
-  }
-
+function getTripShareUrl() {
+  return `${window.location.origin}${window.location.pathname}?trip=${encodeURIComponent(tripId)}`;
 }
+
+async function copyTripLink() {
+  const url = getTripShareUrl();
+  try {
+    await navigator.clipboard.writeText(url);
+    toast("Trip link copied!");
+  } catch (error) {
+    window.prompt("Copy your trip link:", url);
+  }
+}
+
+async function shareTrip() {
+  const url = getTripShareUrl();
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `${trip.name} — No Login Split`,
+        text: "Join our expense split",
+        url
+      });
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+    }
+  }
+
+  await copyTripLink();
+}
+
+
 /* =====================================================
    BUTTONS
 ===================================================== */
