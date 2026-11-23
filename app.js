@@ -2090,14 +2090,25 @@ function editExpense(expenseId) {
       <button type="button" id="editAutoAllocate" style="width:auto;padding:8px 12px;margin-bottom:8px;">Distribute total between selected payers</button>
       <p id="editPayerTotal" style="font-size:12px;color:#737887;margin:0 0 18px;"></p>
 
-      <div style="font-weight:800;margin-bottom:8px;">Split between</div>
-      <div id="editExpenseSplit" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
-        ${people.map(person => `
-          <label style="display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid #e8eaf0;border-radius:12px;margin:0;">
-            <input type="checkbox" class="edit-split-check" value="${person.id}" ${initialSplit.includes(String(person.id)) ? "checked" : ""}>
-            <span>${escapeHtml(person.name)}</span>
-          </label>
-        `).join("")}
+      <div style="margin-top:16px;padding:14px;border:1px solid #DDEBE2;border-radius:16px;background:#F5FAF7;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <div>
+            <div style="font-weight:800;font-size:14px;">Split between</div>
+            <div id="editSelectedParticipantCount" style="font-size:12px;color:#718078;margin-top:3px;">${initialSplit.length} of ${people.length} selected</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button type="button" id="editSelectAllParticipants" style="border:0;background:transparent;color:#047857;font-size:12px;font-weight:700;padding:6px;">Select all</button>
+            <button type="button" id="editClearAllParticipants" style="border:0;background:transparent;color:#047857;font-size:12px;font-weight:700;padding:6px;">Clear</button>
+          </div>
+        </div>
+        <div id="editExpenseSplit" style="display:flex;flex-direction:column;gap:8px;">
+          ${people.map(person => `
+            <label style="display:flex;align-items:center;gap:10px;min-height:42px;padding:0 10px;border:1px solid #E1ECE5;border-radius:12px;background:#fff;font-weight:600;cursor:pointer;margin:0;">
+              <input type="checkbox" class="edit-split-check" value="${person.id}" ${initialSplit.includes(String(person.id)) ? "checked" : ""} style="width:18px;height:18px;flex:0 0 18px;margin:0;">
+              <span style="display:block;flex:1;min-width:0;text-align:left;overflow-wrap:anywhere;">${escapeHtml(person.name)}</span>
+            </label>
+          `).join("")}
+        </div>
       </div>
 
       <div id="editExpenseActions" style="position:sticky;bottom:-16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;padding:12px 0 4px;background:#fff;z-index:5;border-top:1px solid #eceef3;">
@@ -2114,6 +2125,23 @@ function editExpense(expenseId) {
   overlay.querySelector("#cancelEditExpense").addEventListener("click", close);
   overlay.addEventListener("click", event => {
     if (event.target === overlay) close();
+  });
+
+  const updateSplitCount = () => {
+    const count = overlay.querySelectorAll(".edit-split-check:checked").length;
+    overlay.querySelector("#editSelectedParticipantCount").textContent = `${count} of ${people.length} selected`;
+  };
+
+  overlay.querySelectorAll(".edit-split-check").forEach(input => {
+    input.addEventListener("change", updateSplitCount);
+  });
+  overlay.querySelector("#editSelectAllParticipants").addEventListener("click", () => {
+    overlay.querySelectorAll(".edit-split-check").forEach(input => { input.checked = true; });
+    updateSplitCount();
+  });
+  overlay.querySelector("#editClearAllParticipants").addEventListener("click", () => {
+    overlay.querySelectorAll(".edit-split-check").forEach(input => { input.checked = false; });
+    updateSplitCount();
   });
 
   const updatePayerTotal = () => {
