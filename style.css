@@ -1167,3 +1167,22 @@ select:focus {
   background: #FDEBE9;
   transform: scale(0.98);
 }
+
+
+/* iOS Safari: vertically center the native date text in its field. */
+#expenseDate {
+  height: 58px !important;
+  min-height: 58px !important;
+  line-height: normal !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+#expenseDate::-webkit-date-and-time-value {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  line-height: normal;
+  text-align: left;
+  margin: 0;
+}
