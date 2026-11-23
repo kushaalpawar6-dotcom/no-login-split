@@ -447,13 +447,19 @@ select:focus {
 
 .trip-header {
   display: flex;
-
   align-items: center;
   justify-content: space-between;
-
   gap: 15px;
-
   margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.trip-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .trip-header-left {
@@ -985,12 +991,16 @@ select:focus {
   }
 
   .trip-header h1 {
-    max-width: 190px;
+    max-width: 145px;
   }
 
-  .share-btn {
-    padding:
-      10px 11px;
+  .trip-header-actions {
+    gap: 6px;
+  }
+
+  .trip-header-actions .share-btn {
+    padding: 9px 9px;
+    font-size: 11px;
   }
 
 }
