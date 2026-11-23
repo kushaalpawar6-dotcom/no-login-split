@@ -1978,10 +1978,20 @@ async function editExpense(expenseId) {
     payments[0].amount = amount;
   } else {
     const oldTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    if (Math.abs(oldTotal - amount) > 0.01) {
-      toast("This expense has multiple payers. Its total changed; please delete and add it again to change payer contributions.");
+    if (oldTotal <= 0) {
+      toast("Payer contributions are invalid.");
       return;
     }
+
+    let allocated = 0;
+    payments = payments.map((payment, index) => {
+      if (index === payments.length - 1) {
+        return { ...payment, amount: Number((amount - allocated).toFixed(2)) };
+      }
+      const share = Number((amount * payment.amount / oldTotal).toFixed(2));
+      allocated = Number((allocated + share).toFixed(2));
+      return { ...payment, amount: share };
+    });
   }
 
   const splitIds = expenseParticipants[expenseId] || people.map(person => person.id);
