@@ -1725,23 +1725,11 @@ $("expenseDate").value = getLocalToday();
 ===================================================== */
 
 function isCurrentUserExpense(expense) {
-  if (!participantId || !expense) return false;
-
-  // Rejoining a profile creates a fresh participant token.
-  // Match the current participant against every identity recorded
-  // for this person, then compare the expense creator's profile name.
-  const currentPerson = people.find(person => {
-    const ids = Array.isArray(person.participant_ids)
-      ? person.participant_ids.map(String)
-      : [String(person.participant_id || "")];
-    return ids.includes(String(participantId));
-  });
-
-  const creatorName = String(expense.created_by_name || "").trim().toLowerCase();
   return Boolean(
-    currentPerson &&
-    creatorName &&
-    creatorName === String(currentPerson.name || "").trim().toLowerCase()
+    participantId &&
+    expense &&
+    expense.created_by_participant_id &&
+    String(expense.created_by_participant_id) === String(participantId)
   );
 }
 
