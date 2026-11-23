@@ -2429,6 +2429,11 @@ function renderTripSummary() {
 
 function calculateExpenseSharesInPaise(amount, personIds) {
   const ids = [...new Set(personIds)];
+  ids.sort((a, b) => {
+    const indexA = people.findIndex(person => String(person.id) === String(a));
+    const indexB = people.findIndex(person => String(person.id) === String(b));
+    return indexA - indexB;
+  });
   if (!ids.length) return {};
 
   const totalPaise = Math.max(0, Math.round((Number(amount) || 0) * 100));
