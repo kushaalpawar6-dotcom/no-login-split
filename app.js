@@ -50,6 +50,13 @@ function toast(message) {
   }, 3000);
 }
 
+function isValidCurrencyAmount(value) {
+  return Number.isFinite(value) &&
+    value > 0 &&
+    Math.abs(value * 100 - Math.round(value * 100)) < 0.0000001;
+}
+
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -1430,13 +1437,10 @@ async function addExpense() {
   }
 
 
-  if (
-    !amount ||
-    amount <= 0
-  ) {
+  if (!isValidCurrencyAmount(amount)) {
 
     toast(
-      "Enter a valid amount."
+      "Enter a valid amount with up to 2 decimal places."
     );
 
     return;
@@ -2078,7 +2082,7 @@ function editExpense(expenseId) {
     const amount = Number(overlay.querySelector("#editExpenseAmount").value);
     const expenseDate = overlay.querySelector("#editExpenseDate").value;
 
-    if (!description || description.length > 200 || !Number.isFinite(amount) || amount <= 0 || !expenseDate) {
+    if (!description || description.length > 200 || !isValidCurrencyAmount(amount) || !expenseDate) {
       toast("Enter a valid description, amount and date.");
       return;
     }
@@ -2088,7 +2092,7 @@ function editExpense(expenseId) {
       return { person_id: checkbox.value, amount: Number(input.value) };
     });
 
-    if (!payments.length || payments.some(payment => !Number.isFinite(payment.amount) || payment.amount <= 0)) {
+    if (!payments.length || payments.some(payment => !isValidCurrencyAmount(payment.amount))) {
       toast("Select payers and enter a positive amount for each.");
       return;
     }
