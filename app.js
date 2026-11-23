@@ -2209,24 +2209,13 @@ function editExpense(expenseId) {
       toast("Total amount is too small for the selected number of payers.");
       return;
     }
-    const weights = selected.map(checkbox => {
-      const input = overlay.querySelector(`.edit-payer-amount[data-person-id="${checkbox.value}"]`);
-      return Math.max(0, Number(input.value) || 0);
-    });
-    const weightTotal = weights.reduce((sum, value) => sum + value, 0);
-    let remaining = totalPaise;
+    // Always divide equally, ignoring any old amounts already entered.
+    // Work in paise so the allocated amounts add up exactly to the expense total.
+    const basePaise = Math.floor(totalPaise / selected.length);
+    const extraPaise = totalPaise % selected.length;
     selected.forEach((checkbox, index) => {
       const input = overlay.querySelector(`.edit-payer-amount[data-person-id="${checkbox.value}"]`);
-      let paise;
-      if (index === selected.length - 1) {
-        paise = remaining;
-      } else {
-        const weight = weightTotal > 0 ? weights[index] / weightTotal : 1 / selected.length;
-        paise = Math.max(1, Math.round(totalPaise * weight));
-        const futureMinimum = selected.length - index - 1;
-        paise = Math.min(paise, remaining - futureMinimum);
-      }
-      remaining -= paise;
+      const paise = basePaise + (index < extraPaise ? 1 : 0);
       input.value = (paise / 100).toFixed(2);
     });
     updatePayerTotal();
