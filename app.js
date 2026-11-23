@@ -1401,7 +1401,7 @@ async function addExpense() {
     $("expenseDate").value;
 
 
-  if (!description) {
+  if (!description || description.length > 200) {
 
     toast(
       "Enter a description (maximum 200 characters)."
