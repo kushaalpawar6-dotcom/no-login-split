@@ -530,6 +530,106 @@ function addExpenseDateField() {
    RENDER TRIP
 ===================================================== */
 
+function renderOwnerControls() {
+  let panel = $("ownerControls");
+  if (!ownerToken) {
+    if (panel) panel.remove();
+    return;
+  }
+
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "ownerControls";
+    panel.className = "card";
+    panel.style.cssText = "margin-bottom:16px;";
+    const expenseCard = document.querySelector(".expense-card");
+    if (expenseCard?.parentNode) {
+      expenseCard.parentNode.insertBefore(panel, expenseCard);
+    } else {
+      $("tripScreen").appendChild(panel);
+    }
+  }
+
+  panel.innerHTML = `
+    <div class="section-title" style="margin-bottom:12px;">
+      <div class="section-icon">⚙️</div>
+      <div>
+        <h2>Trip management</h2>
+        <p>Creator controls</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      <div style="font-weight:700;font-size:14px;">People</div>
+      ${people.map(person => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e8eaf0;border-radius:12px;">
+          <span style="font-weight:600;">${escapeHtml(person.name)}</span>
+          <button type="button" class="danger" style="width:auto;padding:7px 10px;" onclick="deleteTripPerson('${person.id}')">Delete</button>
+        </div>
+      `).join("")}
+      <button type="button" class="danger" style="margin-top:8px;" onclick="deleteCurrentTrip()">Delete Trip</button>
+      <p style="font-size:12px;color:#737887;margin:0;">People linked to existing expenses cannot be deleted, to protect expense history.</p>
+    </div>
+  `;
+}
+
+async function deleteTripPerson(personId) {
+  if (!ownerToken) {
+    toast("Only the trip creator can delete people.");
+    return;
+  }
+  const person = people.find(item => String(item.id) === String(personId));
+  if (!person) return;
+  if (!confirm(`Delete ${person.name} from this trip? This cannot be undone.`)) return;
+
+  try {
+    await api("/rest/v1/rpc/delete_person", {
+      method: "POST",
+      body: JSON.stringify({
+        p_person_id: personId,
+        p_owner_token: ownerToken
+      })
+    });
+
+    if (String(participantId) === String(person.participant_id)) {
+      localStorage.removeItem(`nls_participant_${tripId}`);
+      localStorage.removeItem(`nls_participant_id_${tripId}`);
+      participantToken = null;
+      participantId = null;
+    }
+    await loadTrip();
+    toast("Person deleted.");
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not delete person.");
+  }
+}
+
+async function deleteCurrentTrip() {
+  if (!ownerToken) {
+    toast("Only the trip creator can delete this trip.");
+    return;
+  }
+  if (!confirm("Delete this entire trip, including all expenses and balances? This cannot be undone.")) return;
+
+  try {
+    await api("/rest/v1/rpc/delete_trip", {
+      method: "POST",
+      body: JSON.stringify({
+        p_trip_id: tripId,
+        p_owner_token: ownerToken
+      })
+    });
+
+    localStorage.removeItem(`nls_owner_${tripId}`);
+    localStorage.removeItem(`nls_participant_${tripId}`);
+    localStorage.removeItem(`nls_participant_id_${tripId}`);
+    window.location.href = window.location.pathname;
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not delete trip.");
+  }
+}
+
 function renderTrip() {
 
   showTrip();
@@ -537,6 +637,8 @@ function renderTrip() {
   $("tripTitle").textContent = trip.name;
 
   $("tripLink").textContent = window.location.href;
+
+  renderOwnerControls();
 
   populatePayers();
 
