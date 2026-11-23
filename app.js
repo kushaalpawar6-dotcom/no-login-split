@@ -1,5 +1,1857 @@
-              creator              creatorName
-                ? ` • Added by ${escapeHtml(creatorName)}`
+const SUPABASE_URL = window.SUPABASE_URL;
+const SUPABASE_KEY = window.SUPABASE_KEY;
+
+const tripId =
+  new URLSearchParams(window.location.search).get("trip");
+
+let trip = null;
+let people = [];
+let expenses = [];
+let expenseParticipants = {};
+let expensePayments = [];
+
+let ownerToken =
+  tripId
+    ? localStorage.getItem(`nls_owner_${tripId}`)
+    : null;
+
+let participantToken =
+  tripId
+    ? localStorage.getItem(`nls_participant_${tripId}`)
+    : null;
+
+let participantId =
+  tripId
+    ? localStorage.getItem(`nls_participant_id_${tripId}`)
+    : null;
+
+
+/* =========================
+   HELPERS
+========================= */
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function toast(message) {
+  const box = $("toast");
+
+  if (!box) {
+    alert(message);
+    return;
+  }
+
+  box.textContent = message;
+  box.style.display = "block";
+
+  setTimeout(() => {
+    box.style.display = "none";
+  }, 3000);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+
+/* =========================
+   SUPABASE API
+========================= */
+
+async function api(path, options = {}) {
+
+  const response = await fetch(
+    `${SUPABASE_URL}${path}`,
+    {
+      ...options,
+
+      headers: {
+        apikey: SUPABASE_KEY,
+
+        Authorization:
+          `Bearer ${SUPABASE_KEY}`,
+
+        "Content-Type":
+          "application/json",
+
+        ...(options.headers || {})
+      }
+    }
+  );
+
+  const text = await response.text();
+
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+      data?.hint ||
+      data?.error_description ||
+      "Something went wrong"
+    );
+  }
+
+  return data;
+}
+
+
+/* =========================
+   PEOPLE INPUTS
+========================= */
+
+let personCounter = 0;
+
+function createPersonField() {
+
+  personCounter++;
+
+  const container = $("peopleInputs");
+
+  const row = document.createElement("div");
+
+  row.className = "person-row";
+
+  const input = document.createElement("input");
+
+  input.type = "text";
+  input.maxLength = 80;
+  input.className = "person-input";
+
+  input.placeholder =
+    `Person ${personCounter}`;
+
+  input.autocomplete = "off";
+  input.autocapitalize = "words";
+  input.autocorrect = "off";
+  input.spellcheck = false;
+
+  const remove =
+    document.createElement("button");
+
+  remove.type = "button";
+  remove.className = "remove-person";
+  remove.textContent = "×";
+
+  remove.onclick = () => {
+    row.remove();
+    renumberPeople();
+  };
+
+  row.appendChild(input);
+  row.appendChild(remove);
+
+  container.appendChild(row);
+}
+
+function renumberPeople() {
+
+  const inputs =
+    document.querySelectorAll(
+      "#peopleInputs .person-input"
+    );
+
+  inputs.forEach((input, index) => {
+    input.placeholder =
+      `Person ${index + 1}`;
+  });
+
+  personCounter = inputs.length;
+}
+
+function addPerson() {
+  createPersonField();
+}
+
+
+/* =========================
+   CREATE TRIP
+========================= */
+
+async function createTrip() {
+
+  const tripName =
+    $("tripName").value.trim();
+
+  const inputs =
+    Array.from(
+      document.querySelectorAll(
+        "#peopleInputs .person-input"
+      )
+    );
+
+  const names =
+    inputs
+      .map(input => input.value.trim())
+      .filter(name => name.length > 0);
+
+  if (!tripName || tripName.length > 100) {
+    toast("Enter a trip name (maximum 100 characters).");
+    return;
+  }
+
+  if (names.length < 2 || names.length > 50) {
+    toast("Add between 2 and 50 people.");
+    return;
+  }
+
+  const lowerNames =
+    names.map(name => name.toLowerCase());
+
+  if (
+    new Set(lowerNames).size !== names.length
+  ) {
+    toast(
+      "Each person's name should be different."
+    );
+    return;
+  }
+
+  const button = $("createTripBtn");
+
+  button.disabled = true;
+  button.textContent = "Creating...";
+
+  try {
+
+    const result = await api(
+      "/rest/v1/rpc/create_trip",
+      {
+        method: "POST",
+
+        body: JSON.stringify({
+          p_name: tripName,
+          p_people: names
+        })
+      }
+    );
+
+    const data =
+      Array.isArray(result)
+        ? result[0]
+        : result;
+
+    if (!data?.trip_id) {
+      throw new Error(
+        "Trip creation failed."
+      );
+    }
+
+    const newTripId = data.trip_id;
+
+    if (data.owner_token) {
+      localStorage.setItem(`nls_owner_${newTripId}`, data.owner_token);
+    }
+
+    const joined = await api(
+      "/rest/v1/rpc/join_trip",
+      {
+        method: "POST",
+
+        body: JSON.stringify({
+          p_trip_id: newTripId,
+          p_name: names[0]
+        })
+      }
+    );
+
+    const participant =
+      Array.isArray(joined)
+        ? joined[0]
+        : joined;
+
+    if (!participant?.participant_token) {
+      throw new Error(
+        "Could not create your permission."
+      );
+    }
+
+    localStorage.setItem(
+      `nls_participant_${newTripId}`,
+      participant.participant_token
+    );
+
+    localStorage.setItem(
+      `nls_participant_id_${newTripId}`,
+      participant.participant_id
+    );
+
+    window.location.href =
+      `${window.location.pathname}?trip=${newTripId}`;
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast(error.message);
+
+    button.disabled = false;
+    button.textContent = "Create Trip";
+  }
+}
+/* =====================================================
+   LOAD TRIP
+===================================================== */
+
+async function loadTrip() {
+
+  try {
+
+    const trips = await api(
+      `/rest/v1/trip_public?id=eq.${encodeURIComponent(tripId)}&select=id,name,created_at`
+    );
+
+    if (!trips || trips.length === 0) {
+
+      toast("Trip not found.");
+
+      showHome();
+
+      return;
+    }
+
+    trip = trips[0];
+
+    people = await api(
+      `/rest/v1/people?trip_id=eq.${encodeURIComponent(tripId)}&select=id,name,participant_id&order=created_at.asc`
+    );
+
+    expenses = await api(
+      `/rest/v1/expense_public?trip_id=eq.${encodeURIComponent(tripId)}&select=id,description,amount,expense_date,paid_by,created_by_participant_id,created_at,created_by_name&order=created_at.asc`
+    );
+
+    // Load every contribution so shared payments are reflected correctly.
+    expensePayments = [];
+
+    if (expenses.length) {
+      const expenseIds = expenses.map(expense => expense.id).join(",");
+      expensePayments = await api(
+        `/rest/v1/expense_payments?expense_id=in.(${expenseIds})&select=expense_id,person_id,amount`
+      );
+    }
+
+    await loadExpenseParticipants();
+
+    renderTrip();
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast(error.message);
+
+  }
+
+}
+
+
+/* =====================================================
+   LOAD EXPENSE PARTICIPANTS
+===================================================== */
+
+async function loadExpenseParticipants() {
+
+  expenseParticipants = {};
+
+  if (!expenses.length) {
+    return;
+  }
+
+  const ids = expenses
+    .map(e => e.id)
+    .join(",");
+
+  const rows = await api(
+    `/rest/v1/expense_participants?expense_id=in.(${ids})&select=expense_id,person_id`
+  );
+
+  rows.forEach(row => {
+
+    if (!expenseParticipants[row.expense_id]) {
+
+      expenseParticipants[row.expense_id] = [];
+
+    }
+
+    expenseParticipants[row.expense_id]
+      .push(row.person_id);
+
+  });
+
+
+  /*
+    Old expenses without participant rows
+    are treated as shared by everyone.
+  */
+
+  expenses.forEach(expense => {
+
+    if (
+      !expenseParticipants[expense.id] ||
+      !expenseParticipants[expense.id].length
+    ) {
+
+      expenseParticipants[expense.id] =
+        people.map(person => person.id);
+
+    }
+
+  });
+
+}
+
+
+/* =====================================================
+   SCREENS
+===================================================== */
+
+function showHome() {
+
+  $("homeScreen")
+    .classList
+    .remove("hidden");
+
+  $("tripScreen")
+    .classList
+    .add("hidden");
+
+}
+
+
+function showTrip() {
+
+  $("homeScreen")
+    .classList
+    .add("hidden");
+
+  $("tripScreen")
+    .classList
+    .remove("hidden");
+
+}
+
+
+/* =====================================================
+   
+/* =====================================================
+   RENDER TRIP
+===================================================== */
+
+function getLocalToday() {
+  const today = new Date();
+
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+
+/* =====================================================
+   EXPENSE DATE FIELD
+===================================================== */
+
+function addExpenseDateField() {
+
+  // Use the date input already present in index.html
+  if ($("expenseDate")) {
+    if (!$("expenseDate").value) {
+      $("expenseDate").value = getLocalToday();
+    }
+    return;
+  }
+
+  const payerBox = $("expensePayersBox");
+
+  if (!payerBox) return;
+
+  const dateBox = document.createElement("div");
+
+  dateBox.id = "expenseDateBox";
+
+  dateBox.style.cssText = `
+    margin-top:16px;
+    margin-bottom:16px;
+    padding:14px;
+    border:1px solid #e8eaf0;
+    border-radius:16px;
+    background:#fafbfe;
+  `;
+
+  dateBox.innerHTML = `
+    <label
+      for="expenseDate"
+      style="
+        display:block;
+        font-weight:800;
+        font-size:14px;
+        margin-bottom:8px;
+      "
+    >
+      Date
+    </label>
+
+    <input
+      type="date"
+      id="expenseDate"
+      style="
+        width:100%;
+        box-sizing:border-box;
+        min-height:52px;
+        padding:0 14px;
+        border:1px solid #e3e5eb;
+        border-radius:14px;
+        background:white;
+        font-size:16px;
+        color:#151823;
+      "
+    >
+  `;
+
+  payerBox.parentNode.insertBefore(dateBox, payerBox);
+
+  $("expenseDate").value = getLocalToday();
+}
+
+
+/* =====================================================
+   RENDER TRIP
+===================================================== */
+
+function renderOwnerControls() {
+  let panel = $("ownerControls");
+  if (!ownerToken) {
+    if (panel) panel.remove();
+    return;
+  }
+
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "ownerControls";
+    panel.className = "card";
+    panel.style.cssText = "margin-bottom:16px;";
+    const expenseCard = document.querySelector(".expense-card");
+    if (expenseCard?.parentNode) {
+      expenseCard.parentNode.insertBefore(panel, expenseCard);
+    } else {
+      $("tripScreen").appendChild(panel);
+    }
+  }
+
+  panel.innerHTML = `
+    <div class="section-title" style="margin-bottom:12px;">
+      <div class="section-icon">⚙️</div>
+      <div>
+        <h2>Trip management</h2>
+        <p>Creator controls</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      <div style="font-weight:700;font-size:14px;">People</div>
+      ${people.map(person => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e8eaf0;border-radius:12px;">
+          <span style="font-weight:600;">${escapeHtml(person.name)}</span>
+          <button type="button" class="danger" style="width:auto;padding:7px 10px;" onclick="deleteTripPerson('${person.id}')">Delete</button>
+        </div>
+      `).join("")}
+      <button type="button" class="danger" style="margin-top:8px;" onclick="deleteCurrentTrip()">Delete Trip</button>
+      <p style="font-size:12px;color:#737887;margin:0;">People linked to existing expenses cannot be deleted, to protect expense history.</p>
+      <p style="font-size:12px;color:#737887;margin:0;">Creator access is saved on this device. Clearing browser data removes it.</p>
+    </div>
+  `;
+}
+
+async function deleteTripPerson(personId) {
+  if (!ownerToken) {
+    toast("Only the trip creator can delete people.");
+    return;
+  }
+  const person = people.find(item => String(item.id) === String(personId));
+  if (!person) return;
+  if (!confirm(`Delete ${person.name} from this trip? This cannot be undone.`)) return;
+
+  try {
+    await api("/rest/v1/rpc/delete_person", {
+      method: "POST",
+      body: JSON.stringify({
+        p_person_id: personId,
+        p_owner_token: ownerToken
+      })
+    });
+
+    if (String(participantId) === String(person.participant_id)) {
+      localStorage.removeItem(`nls_participant_${tripId}`);
+      localStorage.removeItem(`nls_participant_id_${tripId}`);
+      participantToken = null;
+      participantId = null;
+    }
+    await loadTrip();
+    toast("Person deleted.");
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not delete person.");
+  }
+}
+
+async function deleteCurrentTrip() {
+  if (!ownerToken) {
+    toast("Only the trip creator can delete this trip.");
+    return;
+  }
+  if (!confirm("Delete this entire trip, including all expenses and balances? This cannot be undone.")) return;
+
+  try {
+    await api("/rest/v1/rpc/delete_trip", {
+      method: "POST",
+      body: JSON.stringify({
+        p_trip_id: tripId,
+        p_owner_token: ownerToken
+      })
+    });
+
+    localStorage.removeItem(`nls_owner_${tripId}`);
+    localStorage.removeItem(`nls_participant_${tripId}`);
+    localStorage.removeItem(`nls_participant_id_${tripId}`);
+    window.location.href = window.location.pathname;
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not delete trip.");
+  }
+}
+
+function renderTrip() {
+
+  showTrip();
+
+  $("tripTitle").textContent = trip.name;
+
+  $("tripLink").textContent = window.location.href;
+
+  renderOwnerControls();
+
+  populatePayers();
+
+  addExpenseDateField();
+
+  renderExpenseParticipantSelector();
+
+  renderMemberSelector();
+
+  renderExpenses();
+
+  renderTripSummary();
+
+  renderBalances();
+
+  renderWhoOwesWhom();
+
+}
+
+
+
+function renderMemberSelector() {
+
+  if (participantId) {
+
+    const existing =
+      people.find(
+        person =>
+          person.participant_id ===
+          participantId
+      );
+
+    if (existing) {
+
+      hideMemberSelector();
+
+      return;
+    }
+
+    participantId = null;
+
+    participantToken = null;
+
+    localStorage.removeItem(
+      `nls_participant_${tripId}`
+    );
+
+    localStorage.removeItem(
+      `nls_participant_id_${tripId}`
+    );
+
+  }
+
+  showMemberSelector();
+
+}
+
+
+function showMemberSelector() {
+
+  let box =
+    $("memberSelector");
+
+  if (!box) {
+
+    box =
+      document.createElement("div");
+
+    box.id =
+      "memberSelector";
+
+    box.className =
+      "card";
+
+    box.style.marginBottom =
+      "16px";
+
+    $("tripScreen")
+      .insertBefore(
+        box,
+        $("tripScreen").firstChild
+      );
+
+  }
+
+
+  box.innerHTML = `
+
+    <div class="section-title">
+
+      <div class="section-icon">
+        👤
+      </div>
+
+      <div>
+
+        <h2>
+          Who are you?
+        </h2>
+
+        <p>
+          Select your name to use this trip.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div
+      style="
+        display:flex;
+        flex-direction:column;
+        gap:9px;
+      "
+    >
+
+      ${
+        people
+          .map(
+            person => `
+
+              <button
+                type="button"
+                class="member-choice"
+                onclick="
+                  selectMember('${person.id}')
+                "
+                style="
+                  width:100%;
+                  min-height:48px;
+                  border:1px solid #e8eaf0;
+                  border-radius:14px;
+                  background:#fafbfe;
+                  color:#151823;
+                  font-weight:700;
+                  text-align:left;
+                  padding:0 15px;
+                "
+              >
+
+                ${escapeHtml(person.name)}
+
+              </button>
+
+            `
+          )
+          .join("")
+      }
+
+    </div>
+
+  `;
+
+}
+
+
+function hideMemberSelector() {
+
+  const box =
+    $("memberSelector");
+
+  if (box) {
+    box.remove();
+  }
+
+}
+
+
+/* =====================================================
+   SELECT MEMBER
+===================================================== */
+
+async function selectMember(personId) {
+
+  const person =
+    people.find(
+      p =>
+        String(p.id) ===
+        String(personId)
+    );
+
+  if (!person) {
+
+    toast("Member not found.");
+
+    return;
+  }
+
+
+  const buttons =
+    document.querySelectorAll(
+      ".member-choice"
+    );
+
+  buttons.forEach(button => {
+    button.disabled = true;
+  });
+
+
+  try {
+
+    const result =
+      await api(
+        "/rest/v1/rpc/join_trip",
+        {
+          method: "POST",
+
+          body: JSON.stringify({
+            p_trip_id: tripId,
+            p_name: person.name
+          })
+        }
+      );
+
+
+    const participant =
+      Array.isArray(result)
+        ? result[0]
+        : result;
+
+
+    if (!participant?.participant_token) {
+
+      throw new Error(
+        "Could not select this member."
+      );
+
+    }
+
+
+    participantToken =
+      participant.participant_token;
+
+    participantId =
+      participant.participant_id;
+
+
+    localStorage.setItem(
+      `nls_participant_${tripId}`,
+      participantToken
+    );
+
+    localStorage.setItem(
+      `nls_participant_id_${tripId}`,
+      participantId
+    );
+
+
+    hideMemberSelector();
+
+
+    toast(
+      `You're using ${person.name}'s profile.`
+    );
+
+
+    await loadTrip();
+
+  }
+
+
+  catch (error) {
+
+    console.error(error);
+
+    toast(error.message);
+
+    buttons.forEach(button => {
+      button.disabled = false;
+    });
+
+  }
+
+}
+
+
+/* =====================================================
+   PAYERS
+===================================================== */
+
+function populatePayers() {
+
+  const oldSelect =
+    $("expensePaidBy");
+
+  if (!oldSelect) {
+    return;
+  }
+
+
+  let box =
+    $("expensePayersBox");
+
+
+  if (!box) {
+
+    box =
+      document.createElement("div");
+
+    box.id =
+      "expensePayersBox";
+
+    box.style.cssText = `
+      margin-top:16px;
+      padding:14px;
+      border:1px solid #e8eaf0;
+      border-radius:16px;
+      background:#fafbfe;
+    `;
+
+
+    oldSelect.parentNode.parentNode
+      .insertBefore(
+        box,
+        oldSelect.parentNode
+      );
+
+  }
+
+
+  oldSelect.parentNode.style.display =
+    "none";
+
+
+  box.innerHTML = `
+
+    <div style="
+      font-weight:800;
+      font-size:14px;
+      margin-bottom:10px;
+    ">
+      Paid by
+    </div>
+
+    <div style="
+      font-size:12px;
+      color:#737887;
+      margin-bottom:10px;
+    ">
+      Select everyone who paid and enter their amount.
+    </div>
+
+    <div
+      id="payerRows"
+      style="
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+      "
+    ></div>
+
+  `;
+
+
+  const rows =
+    $("payerRows");
+
+
+  people.forEach(person => {
+
+    const row =
+      document.createElement("div");
+
+
+    row.style.cssText = `
+      display:grid;
+      grid-template-columns:1fr 110px;
+      gap:8px;
+      align-items:center;
+    `;
+
+
+    row.innerHTML = `
+
+      <label style="
+        display:flex;
+        align-items:center;
+        gap:8px;
+        min-height:44px;
+        padding:0 10px;
+        border-radius:12px;
+        background:white;
+        border:1px solid #eef0f4;
+        font-weight:600;
+      ">
+
+        <input
+          type="checkbox"
+          class="expense-payer"
+          value="${escapeHtml(person.id)}"
+          style="
+            width:18px;
+            height:18px;
+          "
+        >
+
+        <span>
+          ${escapeHtml(person.name)}
+        </span>
+
+      </label>
+
+
+      <input
+        type="number"
+        class="payer-amount"
+        data-person-id="${escapeHtml(person.id)}"
+        min="0"
+        step="0.01"
+        inputmode="decimal"
+        placeholder="₹ Amount"
+        disabled
+        style="
+          width:100%;
+          box-sizing:border-box;
+        "
+      >
+
+    `;
+
+
+    rows.appendChild(row);
+
+  });
+
+
+  rows
+    .querySelectorAll(".expense-payer")
+    .forEach(checkbox => {
+
+      checkbox.addEventListener(
+        "change",
+        () => {
+
+          const amountInput =
+            rows.querySelector(
+              `.payer-amount[data-person-id="${checkbox.value}"]`
+            );
+
+
+          if (amountInput) {
+
+            amountInput.disabled =
+              !checkbox.checked;
+
+
+            if (!checkbox.checked) {
+              amountInput.value = "";
+            }
+
+          }
+
+        }
+      );
+
+    });
+
+}
+/* =====================================================
+   EXPENSE PARTICIPANT UI
+===================================================== */
+
+function renderExpenseParticipantSelector() {
+
+  let box =
+    $("expenseParticipantsBox");
+
+
+  if (!box) {
+
+    box =
+      document.createElement("div");
+
+    box.id =
+      "expenseParticipantsBox";
+
+    box.style.cssText = `
+      margin-top:16px;
+      padding:14px;
+      border:1px solid #e8eaf0;
+      border-radius:16px;
+      background:#fafbfe;
+    `;
+
+
+    const button =
+      $("addExpenseBtn");
+
+
+    button.parentNode.insertBefore(
+      box,
+      button
+    );
+
+  }
+
+
+  box.innerHTML = `
+
+    <div
+      style="
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        margin-bottom:10px;
+      "
+    >
+
+      <div>
+
+        <div
+          style="
+            font-weight:800;
+            font-size:14px;
+          "
+        >
+          Split between
+        </div>
+
+        <div
+          id="selectedParticipantCount"
+          style="
+            font-size:12px;
+            color:#737887;
+            margin-top:3px;
+          "
+        >
+          ${people.length} of ${people.length} selected
+        </div>
+
+      </div>
+
+
+      <div
+        style="
+          display:flex;
+          gap:6px;
+        "
+      >
+
+        <button
+          type="button"
+          id="selectAllParticipants"
+          style="
+            border:0;
+            background:transparent;
+            font-size:12px;
+            font-weight:700;
+            padding:6px;
+          "
+        >
+          Select all
+        </button>
+
+
+        <button
+          type="button"
+          id="clearAllParticipants"
+          style="
+            border:0;
+            background:transparent;
+            font-size:12px;
+            font-weight:700;
+            padding:6px;
+          "
+        >
+          Clear
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div
+      id="expenseParticipantList"
+      style="
+        display:flex;
+        flex-direction:column;
+        gap:8px;
+      "
+    ></div>
+
+  `;
+
+
+  const list =
+    $("expenseParticipantList");
+
+
+  people.forEach(person => {
+
+    const label =
+      document.createElement("label");
+
+
+    label.style.cssText = `
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:42px;
+      padding:0 10px;
+      border-radius:12px;
+      background:white;
+      border:1px solid #eef0f4;
+      font-weight:600;
+      cursor:pointer;
+    `;
+
+
+    label.innerHTML = `
+
+      <input
+        type="checkbox"
+        class="expense-participant"
+        value="${escapeHtml(person.id)}"
+        checked
+        style="
+          width:18px;
+          height:18px;
+        "
+      >
+
+      <span>
+        ${escapeHtml(person.name)}
+      </span>
+
+    `;
+
+
+    list.appendChild(label);
+
+  });
+
+
+  function updateCount() {
+
+    const checked =
+      document.querySelectorAll(
+        ".expense-participant:checked"
+      ).length;
+
+
+    const count =
+      $("selectedParticipantCount");
+
+
+    if (count) {
+
+      count.textContent =
+        `${checked} of ${people.length} selected`;
+
+    }
+
+  }
+
+
+  list
+    .querySelectorAll(
+      ".expense-participant"
+    )
+    .forEach(input => {
+
+      input.addEventListener(
+        "change",
+        updateCount
+      );
+
+    });
+
+
+  $("selectAllParticipants").onclick =
+    () => {
+
+      list
+        .querySelectorAll(
+          ".expense-participant"
+        )
+        .forEach(
+          input =>
+            input.checked = true
+        );
+
+      updateCount();
+
+    };
+
+
+  $("clearAllParticipants").onclick =
+    () => {
+
+      list
+        .querySelectorAll(
+          ".expense-participant"
+        )
+        .forEach(
+          input =>
+            input.checked = false
+        );
+
+      updateCount();
+
+    };
+
+}
+
+
+function getSelectedExpenseParticipants() {
+
+  return Array.from(
+    document.querySelectorAll(
+      ".expense-participant:checked"
+    )
+  ).map(
+    input =>
+      input.value
+  );
+
+}
+
+
+/* =====================================================
+   SAVE EXPENSE PARTICIPANTS
+===================================================== */
+
+/* =====================================================
+   ADD EXPENSE
+===================================================== */
+
+async function addExpense() {
+
+  if (!participantToken) {
+
+    toast(
+      "Please select your name first."
+    );
+
+    showMemberSelector();
+
+    return;
+  }
+
+
+  const description =
+    $("expenseDescription")
+      .value
+      .trim();
+
+
+  const amount =
+    Number(
+      $("expenseAmount").value
+    );
+
+
+  const expenseDate =
+    $("expenseDate").value;
+
+
+  if (!description || description.length > 200) {
+
+    toast(
+      "Enter a description (maximum 200 characters)."
+    );
+
+    return;
+  }
+
+
+  if (
+    !amount ||
+    amount <= 0
+  ) {
+
+    toast(
+      "Enter a valid amount."
+    );
+
+    return;
+  }
+
+
+  if (!expenseDate) {
+
+    toast(
+      "Please select a date."
+    );
+
+    return;
+  }
+
+
+  const payerCheckboxes =
+    Array.from(
+      document.querySelectorAll(
+        ".expense-payer:checked"
+      )
+    );
+
+
+  if (!payerCheckboxes.length) {
+
+    toast(
+      "Select at least one person who paid."
+    );
+
+    return;
+  }
+
+
+  const payments = [];
+
+
+  payerCheckboxes.forEach(
+    checkbox => {
+
+      const amountInput =
+        document.querySelector(
+          `.payer-amount[data-person-id="${checkbox.value}"]`
+        );
+
+
+      const payerAmount =
+        Number(
+          amountInput?.value || 0
+        );
+
+
+      if (payerAmount > 0) {
+
+        payments.push({
+
+          person_id:
+            checkbox.value,
+
+          amount:
+            payerAmount
+
+        });
+
+      }
+
+    }
+  );
+
+
+  if (!payments.length) {
+
+    toast(
+      "Enter the amount paid by each selected person."
+    );
+
+    return;
+  }
+
+
+  const paymentTotal =
+    payments.reduce(
+      (sum, payment) =>
+        sum + payment.amount,
+      0
+    );
+
+
+  if (
+    Math.abs(
+      paymentTotal - amount
+    ) > 0.01
+  ) {
+
+    toast(
+      `Payer amounts must total ₹${amount.toFixed(2)}. Currently ₹${paymentTotal.toFixed(2)}.`
+    );
+
+    return;
+  }
+
+
+  const selectedParticipants =
+    getSelectedExpenseParticipants();
+
+
+  if (
+    !selectedParticipants.length
+  ) {
+
+    toast(
+      "Select at least one participant."
+    );
+
+    return;
+  }
+
+
+  const button =
+    $("addExpenseBtn");
+
+
+  button.disabled = true;
+
+  button.textContent =
+    "Adding...";
+
+
+  try {
+
+    const primaryPayer =
+      payments[0].person_id;
+
+
+    const expenseId = await api(
+      "/rest/v1/rpc/create_expense_complete_secure",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          p_trip_id: tripId,
+          p_participant_token: participantToken,
+          p_description: description,
+          p_amount: amount,
+          p_paid_by: primaryPayer,
+          p_expense_date: expenseDate,
+          p_participants: selectedParticipants.map(person_id => ({ person_id })),
+          p_payments: payments.map(payment => ({
+            person_id: payment.person_id,
+            amount: payment.amount
+          }))
+        })
+      }
+    );
+
+    if (!expenseId) {
+      throw new Error("Expense could not be saved.");
+    }
+
+    $("expenseDescription")
+      .value = "";
+
+
+    $("expenseAmount")
+      .value = "";
+$("expenseDate").value = getLocalToday();
+
+    document
+      .querySelectorAll(
+        ".expense-payer"
+      )
+      .forEach(
+        checkbox => {
+
+          checkbox.checked =
+            false;
+
+        }
+      );
+
+
+    document
+      .querySelectorAll(
+        ".payer-amount"
+      )
+      .forEach(
+        input => {
+
+          input.value =
+            "";
+
+          input.disabled =
+            true;
+
+        }
+      );
+
+
+    await loadTrip();
+
+
+    toast(
+      "Expense added ✓"
+    );
+
+  }
+
+
+  catch (error) {
+
+    console.error(error);
+
+    toast(
+      error.message ||
+      "Could not add expense."
+    );
+
+  }
+
+
+  finally {
+
+    button.disabled =
+      false;
+
+    button.textContent =
+      "Add Expense";
+  
+
+  }
+
+}
+/* =====================================================
+   EXPENSES
+===================================================== */
+
+function isCurrentUserExpense(expense) {
+  const currentPerson = people.find(
+    person => String(person.participant_id) === String(participantId)
+  );
+  return Boolean(
+    currentPerson &&
+    expense.created_by_name &&
+    String(currentPerson.name).trim().toLowerCase() ===
+      String(expense.created_by_name).trim().toLowerCase()
+  );
+}
+
+
+function renderExpenses() {
+
+  const container =
+    $("expensesList");
+
+  container.innerHTML = "";
+
+
+  if (!expenses.length) {
+
+    container.innerHTML = `
+
+      <div
+        class="expense"
+        style="
+          text-align:center;
+          padding:25px;
+        "
+      >
+
+        <div style="font-size:28px;">
+          🧾
+        </div>
+
+        <div
+          style="
+            margin-top:8px;
+            font-weight:700;
+          "
+        >
+          No expenses yet
+        </div>
+
+        <div
+          style="
+            margin-top:4px;
+            color:#737887;
+            font-size:12px;
+          "
+        >
+          Add your first trip expense.
+        </div>
+
+      </div>
+
+    `;
+
+    return;
+  }
+
+
+  expenses.forEach(expense => {
+
+    const paymentsForExpense =
+      expensePayments.filter(
+        payment =>
+          String(payment.expense_id) === String(expense.id)
+      );
+
+    const payerDisplay = paymentsForExpense.length
+      ? paymentsForExpense
+          .map(payment => {
+            const person = people.find(
+              item => String(item.id) === String(payment.person_id)
+            );
+            return person
+              ? `${person.name} (₹${Number(payment.amount).toFixed(2)})`
+              : null;
+          })
+          .filter(Boolean)
+          .join(", ")
+      : (
+          people.find(
+            person =>
+              String(person.id) === String(expense.paid_by)
+          )?.name || "Unknown"
+        );
+
+
+    const creator =
+      people.find(
+        person =>
+          String(person.participant_id) ===
+          String(
+            expense.created_by_participant_id
+          )
+      );
+
+
+    const ids =
+      expenseParticipants[expense.id] ||
+      people.map(
+        person =>
+          person.id
+      );
+
+
+    const names =
+      people
+        .filter(
+          person =>
+            ids.some(
+              id =>
+                String(id) ===
+                String(person.id)
+            )
+        )
+        .map(
+          person =>
+            person.name
+        );
+
+
+    const item =
+      document.createElement("div");
+
+
+    item.className =
+      "expense";
+
+
+    const isMine = isCurrentUserExpense(expense);
+
+
+    let deleteButton = "";
+
+
+    if (isMine || ownerToken) {
+
+      deleteButton = `
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          <button
+            type="button"
+            style="width:auto;padding:8px 12px;"
+            onclick="editExpense('${expense.id}')"
+          >
+            Edit
+          </button>
+
+          <button
+            type="button"
+            class="danger"
+            style="width:auto;padding:8px 12px;"
+            onclick="deleteOwnExpense('${expense.id}')"
+          >
+            Delete
+          </button>
+        </div>
+
+      `;
+
+    }
+
+
+    item.innerHTML = `
+
+      <div class="expense-top">
+
+        <div>
+
+          <div class="expense-name">
+
+            ${escapeHtml(
+              expense.description
+            )}
+
+          </div>
+
+
+          <div class="expense-meta">
+
+            ${escapeHtml(
+              expense.expense_date
+            )}
+
+            • Paid by
+
+            ${escapeHtml(payerDisplay)}
+
+            ${
+              creator
+                ? ` • Added by ${escapeHtml(
+                    creator.name
+                  )}`
                 : ""
             }
 
@@ -208,7 +2060,7 @@ function editExpense(expenseId) {
     const amount = Number(overlay.querySelector("#editExpenseAmount").value);
     const expenseDate = overlay.querySelector("#editExpenseDate").value;
 
-    if (!description || description.length > 200 || !isValidCurrencyAmount(amount) || !expenseDate) {
+    if (!description || description.length > 200 || !Number.isFinite(amount) || amount <= 0 || !expenseDate) {
       toast("Enter a valid description, amount and date.");
       return;
     }
@@ -218,13 +2070,13 @@ function editExpense(expenseId) {
       return { person_id: checkbox.value, amount: Number(input.value) };
     });
 
-    if (!payments.length || payments.some(payment => !isValidCurrencyAmount(payment.amount))) {
+    if (!payments.length || payments.some(payment => !Number.isFinite(payment.amount) || payment.amount <= 0)) {
       toast("Select payers and enter a positive amount for each.");
       return;
     }
 
     const paymentTotal = payments.reduce((sum, payment) => sum + payment.amount, 0);
-    if (Math.abs(paymentTotal - amount) > 0.001) {
+    if (Math.abs(paymentTotal - amount) > 0.01) {
       toast(`Payer amounts must total ₹${amount.toFixed(2)}. Currently ₹${paymentTotal.toFixed(2)}.`);
       return;
     }
@@ -550,11 +2402,6 @@ function renderTripSummary() {
 
 function calculateExpenseSharesInPaise(amount, personIds) {
   const ids = [...new Set(personIds)];
-  ids.sort((a, b) => {
-    const indexA = people.findIndex(person => String(person.id) === String(a));
-    const indexB = people.findIndex(person => String(person.id) === String(b));
-    return indexA - indexB;
-  });
   if (!ids.length) return {};
 
   const totalPaise = Math.max(0, Math.round((Number(amount) || 0) * 100));
@@ -651,11 +2498,10 @@ function renderBalances() {
     }
 
 
-    const uniqueValidIds = [...new Set(validIds)];
     const shares =
-      calculateExpenseSharesInPaise(amount, uniqueValidIds);
+      calculateExpenseSharesInPaise(amount, validIds);
 
-    uniqueValidIds.forEach(id => {
+    validIds.forEach(id => {
       owed[id] += shares[id] || 0;
     });
 
@@ -814,11 +2660,10 @@ function calculateNetBalances() {
     }
 
 
-    const uniqueValidIds = [...new Set(validIds)];
     const shares =
-      calculateExpenseSharesInPaise(amount, uniqueValidIds);
+      calculateExpenseSharesInPaise(amount, validIds);
 
-    uniqueValidIds.forEach(id => {
+    validIds.forEach(id => {
       net[id] -= shares[id] || 0;
     });
 
@@ -1228,40 +3073,61 @@ function renderWhoOwesWhom() {
    SHARE MASTER LINK
 ===================================================== */
 
-function getTripShareUrl() {
-  return `${window.location.origin}${window.location.pathname}?trip=${encodeURIComponent(tripId)}`;
-}
-
-async function copyTripLink() {
-  const url = getTripShareUrl();
-  try {
-    await navigator.clipboard.writeText(url);
-    toast("Trip link copied!");
-  } catch (error) {
-    window.prompt("Copy your trip link:", url);
-  }
-}
-
 async function shareTrip() {
-  const url = getTripShareUrl();
 
-  if (navigator.share) {
-    try {
+  const url =
+    window.location.href;
+
+
+  try {
+
+    if (navigator.share) {
+
       await navigator.share({
-        title: `${trip.name} — No Login Split`,
-        text: "Join our expense split",
-        url
+
+        title:
+          `${trip.name} — No Login Split`,
+
+        text:
+          "Join our expense split",
+
+        url:
+          url
+
       });
-      return;
-    } catch (error) {
-      if (error.name === "AbortError") return;
+
     }
+
+    else {
+
+      await navigator.clipboard
+        .writeText(url);
+
+
+      toast(
+        "Trip link copied!"
+      );
+
+    }
+
   }
 
-  await copyTripLink();
+
+  catch (error) {
+
+    if (
+      error.name !==
+      "AbortError"
+    ) {
+
+      toast(
+        "Unable to share the link."
+      );
+    }
+
+  }
+
 }
-
-
 /* =====================================================
    BUTTONS
 ===================================================== */
