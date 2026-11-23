@@ -10,6 +10,11 @@ let expenses = [];
 let expenseParticipants = {};
 let expensePayments = [];
 
+let ownerToken =
+  tripId
+    ? localStorage.getItem(`nls_owner_${tripId}`)
+    : null;
+
 let participantToken =
   tripId
     ? localStorage.getItem(`nls_participant_${tripId}`)
@@ -244,6 +249,10 @@ async function createTrip() {
     }
 
     const newTripId = data.trip_id;
+
+    if (data.owner_token) {
+      localStorage.setItem(`nls_owner_${newTripId}`, data.owner_token);
+    }
 
     const joined = await api(
       "/rest/v1/rpc/join_trip",
@@ -1488,93 +1497,29 @@ async function addExpense() {
       payments[0].person_id;
 
 
-    await api(
-      "/rest/v1/rpc/add_expense_secure",
+    const expenseId = await api(
+      "/rest/v1/rpc/create_expense_complete_secure",
       {
         method: "POST",
-
         body: JSON.stringify({
-
-          p_trip_id:
-            tripId,
-
-          p_participant_token:
-            participantToken,
-
-          p_description:
-            description,
-
-          p_amount:
-            amount,
-
-          p_paid_by:
-            primaryPayer,
-
-          p_expense_date:
-            expenseDate
-
+          p_trip_id: tripId,
+          p_participant_token: participantToken,
+          p_description: description,
+          p_amount: amount,
+          p_paid_by: primaryPayer,
+          p_expense_date: expenseDate,
+          p_participants: selectedParticipants.map(person_id => ({ person_id })),
+          p_payments: payments.map(payment => ({
+            person_id: payment.person_id,
+            amount: payment.amount
+          }))
         })
-
       }
     );
-
-
-    const latest =
-      await api(
-        `/rest/v1/expenses?trip_id=eq.${encodeURIComponent(tripId)}&created_by_participant_id=eq.${encodeURIComponent(participantId)}&description=eq.${encodeURIComponent(description)}&amount=eq.${encodeURIComponent(amount)}&select=id,created_at&order=created_at.desc&limit=1`
-      );
-
-
-    const expenseId =
-      latest?.[0]?.id;
-
 
     if (!expenseId) {
-
-      throw new Error(
-        "Expense was added, but its ID could not be found."
-      );
-
+      throw new Error("Expense could not be saved.");
     }
-
-
-    await saveExpenseParticipants(
-      expenseId,
-      selectedParticipants
-    );
-
-
-    await api(
-      "/rest/v1/expense_payments",
-      {
-        method: "POST",
-
-        headers: {
-          Prefer:
-            "return=minimal"
-        },
-
-        body:
-          JSON.stringify(
-            payments.map(
-              payment => ({
-
-                expense_id:
-                  expenseId,
-
-                person_id:
-                  payment.person_id,
-
-                amount:
-                  payment.amount
-
-              })
-            )
-          )
-
-      }
-    );
-
 
     $("expenseDescription")
       .value = "";
@@ -1918,7 +1863,7 @@ async function deleteOwnExpense(expenseId) {
   try {
 
     await api(
-      "/rest/v1/rpc/delete_my_expense",
+      "/rest/v1/rpc/delete_expense_secure",
       {
         method: "POST",
 
@@ -1928,7 +1873,10 @@ async function deleteOwnExpense(expenseId) {
             expenseId,
 
           p_participant_token:
-            participantToken
+            participantToken,
+
+          p_owner_token:
+            ownerToken
 
         })
       }
