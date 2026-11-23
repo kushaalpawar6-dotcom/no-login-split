@@ -1672,14 +1672,10 @@ $("expenseDate").value = getLocalToday();
 ===================================================== */
 
 function isCurrentUserExpense(expense) {
-  const currentPerson = people.find(
-    person => String(person.participant_id) === String(participantId)
-  );
   return Boolean(
-    currentPerson &&
-    expense.created_by_name &&
-    String(currentPerson.name).trim().toLowerCase() ===
-      String(expense.created_by_name).trim().toLowerCase()
+    participantId &&
+    expense.created_by_participant_id &&
+    String(expense.created_by_participant_id) === String(participantId)
   );
 }
 
