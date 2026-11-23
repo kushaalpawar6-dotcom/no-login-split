@@ -546,15 +546,16 @@ function renderOwnerControls() {
         <p>Creator controls</p>
       </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:9px;">
-      <div style="font-weight:700;font-size:14px;">Add person</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input id="ownerAddPersonName" type="text" maxlength="80" placeholder="New person's name" style="min-width:0;flex:1;">
-        <button type="button" id="ownerAddPersonBtn" style="width:auto;padding:10px 14px;" onclick="addTripPerson()">Add</button>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div>
+          <div style="font-weight:750;font-size:14px;">Trip members</div>
+          <p style="font-size:12px;color:#737887;margin:3px 0 0;">People who are part of this trip</p>
+        </div>
+        <button type="button" class="secondary" style="width:auto;padding:9px 12px;white-space:nowrap;" onclick="openAddTripPersonPopup()">＋ Add member</button>
       </div>
-      <div style="font-weight:700;font-size:14px;margin-top:6px;">People</div>
       ${people.map(person => `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e8eaf0;border-radius:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #DDEBE2;border-radius:12px;background:#F8FCF9;">
           <span style="font-weight:600;">${escapeHtml(person.name)}</span>
           ${people.length > 2
             ? `<button type="button" class="danger" style="width:auto;padding:7px 10px;" onclick="deleteTripPerson('${person.id}')">Delete</button>`
@@ -564,6 +565,20 @@ function renderOwnerControls() {
       <button type="button" class="danger" style="margin-top:8px;" onclick="deleteCurrentTrip()">Delete Trip</button>
       <p style="font-size:12px;color:#737887;margin:0;">People linked to existing expenses cannot be deleted, to protect expense history.</p>
       <p style="font-size:12px;color:#737887;margin:0;">Creator access is saved on this device. Clearing browser data removes it.</p>
+    </div>
+    <div id="addTripPersonPopup" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.48);padding:20px;align-items:center;justify-content:center;">
+      <div role="dialog" aria-modal="true" aria-labelledby="addTripPersonTitle" style="width:100%;max-width:380px;background:#fff;border-radius:18px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+          <h3 id="addTripPersonTitle" style="margin:0;font-size:18px;">Add someone to this trip</h3>
+          <button type="button" class="secondary" aria-label="Close" style="width:36px;min-height:36px;padding:0;" onclick="closeAddTripPersonPopup()">×</button>
+        </div>
+        <p style="font-size:13px;color:#737887;line-height:1.45;margin:0 0 14px;">This only adds a trip member. It does not add an expense.</p>
+        <input id="ownerAddPersonName" type="text" maxlength="80" placeholder="Enter person's name" style="width:100%;box-sizing:border-box;margin-bottom:12px;">
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="secondary" style="flex:1;" onclick="closeAddTripPersonPopup()">Cancel</button>
+          <button type="button" id="ownerAddPersonBtn" style="flex:1;" onclick="addTripPerson()">Add member</button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -626,6 +641,18 @@ async function deleteTripPerson(personId) {
   }
 }
 
+function openAddTripPersonPopup() {
+  const popup = $("addTripPersonPopup");
+  if (!popup) return;
+  popup.style.display = "flex";
+  setTimeout(() => $("ownerAddPersonName")?.focus(), 50);
+}
+
+function closeAddTripPersonPopup() {
+  const popup = $("addTripPersonPopup");
+  if (popup) popup.style.display = "none";
+}
+
 async function addTripPerson() {
   if (!ownerToken) {
     toast("Only the trip creator can add people.");
@@ -660,6 +687,7 @@ async function addTripPerson() {
       })
     });
     if (input) input.value = "";
+    closeAddTripPersonPopup();
     await loadTrip();
     toast("Person added. They can select their name to join.");
   } catch (error) {
@@ -668,7 +696,7 @@ async function addTripPerson() {
   } finally {
     if (button) {
       button.disabled = false;
-      button.textContent = "Add";
+      button.textContent = "Add member";
     }
   }
 }
