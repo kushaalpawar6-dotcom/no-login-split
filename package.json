@@ -2,7 +2,7 @@
   "name": "no-login-split",
   "private": true,
   "scripts": {
-    "test": "node --test",
+    "test": "node --test tests/calculations.test.cjs",
     "test:browser": "node --test tests/browser-smoke.test.cjs",
     "test:all": "npm test && npm run test:browser"
   },
