@@ -597,7 +597,7 @@
 
         const result =
           await api(
-            "/rest/v1/rpc/join_trip",
+            "/rest/v1/rpc/add_person_secure",
             {
               method: "POST",
 
@@ -605,6 +605,9 @@
 
                 p_trip_id:
                   tripId,
+
+                p_participant_token:
+                  participantToken,
 
                 p_name:
                   cleanName
