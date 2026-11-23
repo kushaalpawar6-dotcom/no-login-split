@@ -1366,54 +1366,6 @@ function getSelectedExpenseParticipants() {
    SAVE EXPENSE PARTICIPANTS
 ===================================================== */
 
-async function saveExpenseParticipants(
-  expenseId,
-  personIds
-) {
-
-  if (
-    !expenseId ||
-    !personIds.length
-  ) {
-
-    throw new Error(
-      "Select at least one participant."
-    );
-
-  }
-
-
-  await api(
-    "/rest/v1/expense_participants",
-    {
-      method: "POST",
-
-      headers: {
-        Prefer:
-          "return=minimal"
-      },
-
-      body:
-        JSON.stringify(
-          personIds.map(
-            personId => ({
-
-              expense_id:
-                expenseId,
-
-              person_id:
-                personId
-
-            })
-          )
-        )
-
-    }
-  );
-
-}
-
-
 /* =====================================================
    ADD EXPENSE
 ===================================================== */
