@@ -163,7 +163,7 @@ function createPersonField() {
   input.className = "person-input";
 
   input.placeholder =
-    `Person ${personCounter}`;
+    `Member ${personCounter}`;
 
   input.autocomplete = "off";
   input.autocapitalize = "words";
@@ -197,7 +197,7 @@ function renumberPeople() {
 
   inputs.forEach((input, index) => {
     input.placeholder =
-      `Person ${index + 1}`;
+      `Member ${index + 1}`;
   });
 
   personCounter = inputs.length;
