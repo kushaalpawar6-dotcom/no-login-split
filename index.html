@@ -557,10 +557,10 @@
         name.trim();
 
 
-      if (!cleanName) {
+      if (!cleanName || cleanName.length > 80) {
 
         toast(
-          "Enter a valid name."
+          "Enter a valid name (maximum 80 characters)."
         );
 
         return;
