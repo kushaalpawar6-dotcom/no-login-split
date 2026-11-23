@@ -583,7 +583,12 @@ function renderOwnerControls() {
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:9px;">
-      <div style="font-weight:700;font-size:14px;">People</div>
+      <div style="font-weight:700;font-size:14px;">Add a person</div>
+      <div style="display:flex;gap:8px;align-items:stretch;">
+        <input id="ownerAddPersonName" type="text" maxlength="80" placeholder="New person's name" style="min-width:0;flex:1;box-sizing:border-box;">
+        <button type="button" id="ownerAddPersonBtn" style="width:auto;padding:0 14px;" onclick="addTripPerson()">Add</button>
+      </div>
+      <div style="font-weight:700;font-size:14px;margin-top:8px;">People</div>
       ${people.map(person => `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e8eaf0;border-radius:12px;">
           <span style="font-weight:600;">${escapeHtml(person.name)}</span>
@@ -598,6 +603,53 @@ function renderOwnerControls() {
     </div>
   `;
 }
+
+async function addTripPerson() {
+  if (!ownerToken) {
+    toast("Only the trip creator can add people.");
+    return;
+  }
+
+  const input = $("ownerAddPersonName");
+  const button = $("ownerAddPersonBtn");
+  const name = input?.value.trim() || "";
+
+  if (!name || name.length > 80) {
+    toast("Enter a name between 1 and 80 characters.");
+    return;
+  }
+  if (people.length >= 50) {
+    toast("This trip has reached the 50-person limit.");
+    return;
+  }
+  if (people.some(person => person.name.trim().toLowerCase() === name.toLowerCase())) {
+    toast("A person with this name already exists.");
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Adding...";
+
+  try {
+    await api("/rest/v1/rpc/add_person_secure", {
+      method: "POST",
+      body: JSON.stringify({
+        p_trip_id: tripId,
+        p_owner_token: ownerToken,
+        p_name: name
+      })
+    });
+    input.value = "";
+    await loadTrip();
+    toast("Person added.");
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Could not add person.");
+    button.disabled = false;
+    button.textContent = "Add";
+  }
+}
+
 
 async function deleteTripPerson(personId) {
   if (!ownerToken) {
