@@ -1746,14 +1746,14 @@ function renderExpenses() {
         );
 
 
-    const creator =
+    const creatorName =
+      expense.created_by_name ||
       people.find(
         person =>
           String(person.participant_id) ===
-          String(
-            expense.created_by_participant_id
-          )
-      );
+          String(expense.created_by_participant_id)
+      )?.name ||
+      "";
 
 
     const ids =
@@ -1848,10 +1848,8 @@ function renderExpenses() {
             ${escapeHtml(payerDisplay)}
 
             ${
-              creator
-                ? ` • Added by ${escapeHtml(
-                    creator.name
-                  )}`
+              creatorName
+                ? ` • Added by ${escapeHtml(creatorName)}`
                 : ""
             }
 
